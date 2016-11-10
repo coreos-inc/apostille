@@ -1,0 +1,14 @@
+{
+	"server": {
+		"http_addr": ":4443"
+	},
+	"trust_service": {
+	  "type": "local"
+	},
+	"logging": {
+		"level": "debug"
+	},
+	"storage": {
+		"backend": "memory"
+	}
+}
