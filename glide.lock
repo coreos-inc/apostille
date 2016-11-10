@@ -1,0 +1,257 @@
+hash: 1dac40e6054521e62f08448a9e219737e37fafdbe1e3329ed52daa45ff1315f2
+updated: 2016-10-31T11:16:22.325598112-04:00
+imports:
+- name: github.com/agl/ed25519
+  version: 278e1ec8e8a6e017cd07577924d6766039146ced
+  subpackages:
+  - edwards25519
+- name: github.com/Azure/go-ansiterm
+  version: 388960b655244e76e24c75f48631564eaefade62
+  subpackages:
+  - winterm
+- name: github.com/beorn7/perks
+  version: b965b613227fddccbfffe13eae360ed3fa822f8d
+  subpackages:
+  - quantile
+- name: github.com/bugsnag/bugsnag-go
+  version: 13fd6b8acda029830ef9904df6b63be0a83369d0
+  subpackages:
+  - errors
+  - examples/appengine
+  - examples/http
+  - examples/revelapp/app
+  - examples/revelapp/app/controllers
+  - examples/revelapp/tests
+  - revel
+- name: github.com/bugsnag/osext
+  version: 0dd3f918b21bec95ace9dc86c7e70266cfc5c702
+- name: github.com/bugsnag/panicwrap
+  version: e2c28503fcd0675329da73bf48b33404db873782
+- name: github.com/BurntSushi/toml
+  version: bd2bdf7f18f849530ef7a1c29a4290217cab32a1
+  subpackages:
+  - cmd/toml-test-decoder
+  - cmd/toml-test-encoder
+  - cmd/tomlv
+- name: github.com/cenkalti/backoff
+  version: 4dc77674aceaabba2c7e3da25d4c823edfb73f99
+- name: github.com/docker/distribution
+  version: 12acdf0a6c1e56d965ac6eb395d2bce687bf22fc
+  subpackages:
+  - context
+  - digest
+  - health
+  - reference
+  - registry/api/errcode
+  - registry/api/v2
+  - registry/auth
+  - registry/auth/htpasswd
+  - registry/auth/silly
+  - registry/auth/token
+  - registry/client
+  - registry/client/auth
+  - registry/client/transport
+  - registry/storage/cache
+  - registry/storage/cache/memory
+  - uuid
+  - vendor/github.com/Sirupsen/logrus
+  - vendor/github.com/docker/libtrust
+  - vendor/github.com/gorilla/context
+  - vendor/github.com/gorilla/mux
+  - vendor/golang.org/x/crypto/bcrypt
+  - vendor/golang.org/x/crypto/blowfish
+  - vendor/golang.org/x/net/context
+- name: github.com/docker/docker
+  version: 91853e44aeb20e55bcfcad5041c274783fdc06bc
+  subpackages:
+  - pkg/system
+  - pkg/term
+  - pkg/term/windows
+- name: github.com/docker/go
+  version: d30aec9fd63c35133f8f79c3412ad91a3b08be06
+  subpackages:
+  - canonical/json
+- name: github.com/docker/go-connections
+  version: f549a9393d05688dff0992ef3efd8bbe6c628aeb
+  subpackages:
+  - tlsconfig
+- name: github.com/docker/libtrust
+  version: 9cbd2a1374f46905c68a4eb3694a130610adc62a
+  subpackages:
+  - testutil
+  - tlsdemo
+  - trustgraph
+- name: github.com/docker/notary
+  version: c8aa8cf53cbcda2e92def0c9291e25d770493494
+  subpackages:
+  - cmd/notary-server
+  - cryptoservice
+  - passphrase
+  - proto
+  - server
+  - server/errors
+  - server/handlers
+  - server/snapshot
+  - server/storage
+  - server/timestamp
+  - signer/client
+  - storage
+  - storage/rethinkdb
+  - trustmanager
+  - trustpinning
+  - tuf
+  - tuf/data
+  - tuf/signed
+  - tuf/testutils
+  - tuf/utils
+  - tuf/validation
+  - utils
+  - version
+- name: github.com/go-sql-driver/mysql
+  version: 0cc29e9fe8e25c2c58cf47bcab566e029bbaa88b
+- name: github.com/golang/protobuf
+  version: c3cefd437628a0b7d31b34fe44b3a7a540e98527
+  subpackages:
+  - proto
+  - proto/proto3_proto
+  - ptypes/any
+- name: github.com/gorilla/context
+  version: 14f550f51af52180c2eefed15e5fd18d63c0a64a
+- name: github.com/gorilla/mux
+  version: e444e69cbd2e2e3e0749a2f3c717cec491552bbf
+- name: github.com/hailocab/go-hostpool
+  version: e80d13ce29ede4452c43dea11e79b9bc8a15b478
+- name: github.com/jinzhu/gorm
+  version: 82d726bbfd8cefbe2dcdc7f7f0484551c0d40433
+- name: github.com/kr/pretty
+  version: bc9499caa0f45ee5edb2f0209fbd61fbf3d9018f
+- name: github.com/kr/text
+  version: 6807e777504f54ad073ecef66747de158294b639
+  subpackages:
+  - colwriter
+  - mc
+- name: github.com/lib/pq
+  version: 0dad96c0b94f8dee039aa40467f767467392a0af
+  subpackages:
+  - hstore
+  - oid
+- name: github.com/magiconair/properties
+  version: 624009598839a9432bd97bb75552389422357723
+- name: github.com/matttproud/golang_protobuf_extensions
+  version: d0c3fe89de86839aecf2e0579c40ba3bb336a453
+  subpackages:
+  - pbutil
+- name: github.com/mitchellh/mapstructure
+  version: 2caf8efc93669b6c43e0441cdc6aed17546c96f3
+- name: github.com/prometheus/client_golang
+  version: 449ccefff16c8e2b7229f6be1921ba22f62461fe
+  subpackages:
+  - prometheus
+- name: github.com/prometheus/client_model
+  version: fa8ad6fec33561be4280a8f0514318c79d7f6cb6
+  subpackages:
+  - go
+- name: github.com/prometheus/common
+  version: 4fdc91a58c9d3696b982e8a680f4997403132d44
+  subpackages:
+  - expfmt
+  - internal/bitbucket.org/ww/goautoneg
+  - model
+- name: github.com/prometheus/procfs
+  version: b1afdc266f54247f5dc725544f5d351a8661f502
+- name: github.com/Shopify/logrus-bugsnag
+  version: 5a46080c635f13e8b60c24765c19d62e1ca8d0fb
+- name: github.com/Sirupsen/logrus
+  version: 3ec0642a7fb6488f65b06f9040adc67e3990296a
+- name: github.com/spf13/cast
+  version: 4d07383ffe94b5e5a6fa3af9211374a4507a0184
+- name: github.com/spf13/jwalterweatherman
+  version: 3d60171a64319ef63c78bd45bd60e6eab1e75f8b
+- name: github.com/spf13/pflag
+  version: cb88ea77998c3f024757528e3305022ab50b43be
+- name: github.com/spf13/viper
+  version: be5ff3e4840cf692388bde7a057595a474ef379e
+  subpackages:
+  - remote
+- name: github.com/stretchr/testify
+  version: 089c7181b8c728499929ff09b62d3fdd8df8adff
+  subpackages:
+  - assert
+  - require
+- name: golang.org/x/crypto
+  version: 5bcd134fee4dd1475da17714aac19c0aa0142e2f
+  subpackages:
+  - bcrypt
+  - blowfish
+  - cast5
+  - md4
+  - nacl/secretbox
+  - openpgp
+  - openpgp/armor
+  - openpgp/elgamal
+  - openpgp/errors
+  - openpgp/packet
+  - openpgp/s2k
+  - pbkdf2
+  - poly1305
+  - salsa20/salsa
+  - scrypt
+  - ssh/terminal
+- name: golang.org/x/net
+  version: 6a513affb38dc9788b449d59ffed099b8de18fa0
+  subpackages:
+  - context
+  - http2
+  - http2/hpack
+  - internal/timeseries
+  - lex/httplex
+  - trace
+- name: golang.org/x/sys
+  version: 442cd600860ce722f6615730eb008a37a87b13ee
+  subpackages:
+  - unix
+- name: google.golang.org/grpc
+  version: 452f01f3ae159dcec83bbf0c6b0d96860e07b5e6
+  subpackages:
+  - benchmark
+  - benchmark/client
+  - benchmark/grpc_testing
+  - benchmark/server
+  - benchmark/stats
+  - codes
+  - credentials
+  - credentials/oauth
+  - examples/helloworld/greeter_client
+  - examples/helloworld/greeter_server
+  - examples/helloworld/helloworld
+  - examples/route_guide/client
+  - examples/route_guide/routeguide
+  - examples/route_guide/server
+  - grpclog
+  - grpclog/glogger
+  - health
+  - health/grpc_health_v1
+  - internal
+  - interop
+  - interop/client
+  - interop/grpc_testing
+  - interop/server
+  - metadata
+  - naming
+  - peer
+  - test/codec_perf
+  - test/grpc_testing
+  - transport
+- name: gopkg.in/dancannon/gorethink.v2
+  version: 3742792da4bc279ccd6d807f24687009cbeda860
+  subpackages:
+  - encoding
+  - ql2
+  - types
+- name: gopkg.in/fatih/pool.v2
+  version: cba550ebf9bce999a02e963296d4bc7a486cb715
+- name: gopkg.in/yaml.v2
+  version: bef53efd0c76e49e6de55ead051f886bea7e9420
+testImports:
+- name: github.com/mattn/go-sqlite3
+  version: b4142c444a8941d0d92b0b7103a24df9cd815e42

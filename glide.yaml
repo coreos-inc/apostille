@@ -1,0 +1,9 @@
+package: github.com/coreos-inc/apostille
+import:
+- package: github.com/docker/notary
+  version: ~0.4.2
+  subpackages:
+  - cmd/notary-server
+- package: golang.org/x/net
+  subpackages:
+  - context
