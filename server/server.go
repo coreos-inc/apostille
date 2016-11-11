@@ -5,34 +5,22 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"strings"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/docker/distribution/health"
-	"github.com/docker/distribution/registry/api/errcode"
+	ctxutil "github.com/docker/distribution/context"
 	"github.com/docker/distribution/registry/auth"
-	"github.com/docker/notary"
-	"github.com/docker/notary/server/errors"
-	"github.com/docker/notary/server/handlers"
+	notaryServer "github.com/docker/notary/server"
 	"github.com/docker/notary/tuf/data"
 	"github.com/docker/notary/tuf/signed"
 	"github.com/docker/notary/utils"
 	"github.com/gorilla/mux"
-	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/context"
+
+	"github.com/coreos-inc/apostille/storage"
+
+	"github.com/docker/notary/server/errors"
+	"github.com/docker/notary/server/handlers"
 )
-
-func init() {
-	data.SetDefaultExpiryTimes(notary.NotaryDefaultExpiries)
-}
-
-func prometheusOpts(operation string) prometheus.SummaryOpts {
-	return prometheus.SummaryOpts{
-		Namespace:   "apostille",
-		Subsystem:   "http",
-		ConstLabels: prometheus.Labels{"operation": operation},
-	}
-}
 
 // Config tells Run how to configure a server
 type Config struct {
@@ -76,117 +64,95 @@ func Run(ctx context.Context, conf Config) error {
 			return err
 		}
 	}
+
+	// The normal notary handler, which is given all requests that we don't care about
+
 	svr := http.Server{
 		Addr: conf.Addr,
-		Handler: RootHandler(
-			ac, ctx, conf.Trust,
-			conf.ConsistentCacheControlConfig, conf.CurrentCacheControlConfig,
-			conf.RepoPrefixes),
+		Handler: TrustMultiplexerHandler(ac, ctx, conf.Trust,
+			conf.ConsistentCacheControlConfig,
+			conf.CurrentCacheControlConfig,
+			conf.RepoPrefixes,
+		),
 	}
 	logrus.Info("Starting on ", conf.Addr)
 	err = svr.Serve(lsnr)
 	return err
 }
 
-// filterImagePrefixes checks that incoming requests only work on the defined GUN prefixes
-func filterImagePrefixes(requiredPrefixes []string, err error, handler http.Handler) http.Handler {
-	if len(requiredPrefixes) == 0 {
-		return handler
+// GetMetadataHandler returns the json for a specified role and GUN.
+// It determines which root of trust to use based on the requesting user.
+func GetMetadataHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	defer r.Body.Close()
+	vars := mux.Vars(r)
+
+	username := storage.Username(ctxutil.GetStringValue(ctx, "auth.user.name"))
+	gun := storage.GUN(vars["imageName"])
+	s := ctx.Value("metaStore")
+	logger := ctxutil.GetLoggerWithField(ctx, gun, "gun")
+	store, ok := s.(storage.SignerMetaStore)
+	if !ok {
+		logger.Error("500 GET: no storage exists")
+		return errors.ErrNoStorage.WithDetail(nil)
 	}
 
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		imageName := mux.Vars(r)["imageName"]
+	// Query DB to find out which root should be served for (username, gun)
+	userIsSigner := false
+	if username != "" && store.IsSigner(username, gun) {
+		userIsSigner = true
+	}
 
-		for _, prefix := range requiredPrefixes {
-			if strings.HasPrefix(imageName, prefix) {
-				handler.ServeHTTP(w, r)
-				return
-			}
-		}
+	// If user is listed as a signing_user, serve "signer" root
+	// signing users must have push access
+	if userIsSigner {
+		return handlers.GetHandler(ctx, w, r)
+	}
 
-		errcode.ServeJSON(w, err)
-	})
+	// If not in list of signing users, serve Quay root
+	tufRole := vars["tufRole"]
+	if tufRole == data.CanonicalRootRole {
+		// serve alternate root
+		return handlers.GetHandler(ctx, w, r)
+
+	} else if tufRole == data.CanonicalSnapshotRole {
+		// serve alternate snapshot
+		return handlers.GetHandler(ctx, w, r)
+
+	} else {
+		// serve normal timestamp/targets
+		return handlers.GetHandler(ctx, w, r)
+	}
+	return nil
 }
 
-type serverEndpoint struct {
-	OperationName       string
-	ServerHandler       utils.ContextHandler
-	ErrorIfGUNInvalid   error
-	IncludeCacheHeaders bool
-	CacheControlConfig  utils.CacheControlConfig
-	PermissionsRequired []string
-}
-
-// RootHandler returns the handler that routes all the paths from / for the
-// server.
-func RootHandler(ac auth.AccessController, ctx context.Context, trust signed.CryptoService,
+// TrustMutliplexerHandler wraps a standard notary server router and
+// splits access to different trust roots based on request criteria,
+// e.g. username or URL.
+func TrustMultiplexerHandler(ac auth.AccessController, ctx context.Context, trust signed.CryptoService,
 	consistent, current utils.CacheControlConfig, repoPrefixes []string) http.Handler {
-
-	authWrapper := utils.RootHandlerFactory(ac, ctx, trust)
-
-	createHandler := func(opts serverEndpoint) http.Handler {
-		var wrapped http.Handler
-		wrapped = authWrapper(opts.ServerHandler, opts.PermissionsRequired...)
-		if opts.IncludeCacheHeaders {
-			wrapped = utils.WrapWithCacheHandler(opts.CacheControlConfig, wrapped)
-		}
-		wrapped = filterImagePrefixes(repoPrefixes, opts.ErrorIfGUNInvalid, wrapped)
-		return prometheus.InstrumentHandlerWithOpts(prometheusOpts(opts.OperationName), wrapped)
-	}
-
-	invalidGUNErr := errors.ErrInvalidGUN.WithDetail(fmt.Sprintf("Require GUNs with prefix: %v", repoPrefixes))
-	notFoundError := errors.ErrMetadataNotFound.WithDetail(nil)
-
 	r := mux.NewRouter()
-	r.Methods("GET").Path("/v2/").Handler(authWrapper(handlers.MainHandler))
 
-	r.Methods("POST").Path("/v2/{imageName:.*}/_trust/tuf/").Handler(createHandler(serverEndpoint{
-		OperationName:       "UpdateTUF",
-		ErrorIfGUNInvalid:   invalidGUNErr,
-		ServerHandler:       handlers.AtomicUpdateHandler,
-		PermissionsRequired: []string{"push", "pull"},
-	}))
-	r.Methods("GET").Path("/v2/{imageName:.*}/_trust/tuf/{tufRole:root|targets(?:/[^/\\s]+)*|snapshot|timestamp}.{checksum:[a-fA-F0-9]{64}|[a-fA-F0-9]{96}|[a-fA-F0-9]{128}}.json").Handler(createHandler(serverEndpoint{
-		OperationName:       "GetRoleByHash",
-		ErrorIfGUNInvalid:   notFoundError,
-		IncludeCacheHeaders: true,
-		CacheControlConfig:  consistent,
-		ServerHandler:       handlers.GetHandler,
-		PermissionsRequired: []string{"pull"},
-	}))
-	r.Methods("GET").Path("/v2/{imageName:.*}/_trust/tuf/{tufRole:root|targets(?:/[^/\\s]+)*|snapshot|timestamp}.json").Handler(createHandler(serverEndpoint{
+	// Standard Notary server handler; calls that we don't care about will be routed here
+	notaryHandler := notaryServer.RootHandler(
+		ac, ctx, trust,
+		consistent,
+		current,
+		repoPrefixes,
+	)
+
+	// Intercept GET requests for TUF metadata, so we can serve different roots based on username
+	r.Methods("GET").Path("/v2/{imageName:.*}/_trust/tuf/{tufRole:root|targets(?:/[^/\\s]+)*|snapshot|timestamp}.json").Handler(notaryServer.CreateHandler(notaryServer.ServerEndpoint{
 		OperationName:       "GetRole",
-		ErrorIfGUNInvalid:   notFoundError,
+		ErrorIfGUNInvalid:   errors.ErrMetadataNotFound.WithDetail(nil),
 		IncludeCacheHeaders: true,
 		CacheControlConfig:  current,
-		ServerHandler:       handlers.GetHandler,
+		ServerHandler:       GetMetadataHandler,
 		PermissionsRequired: []string{"pull"},
-	}))
-	r.Methods("GET").Path(
-		"/v2/{imageName:.*}/_trust/tuf/{tufRole:snapshot|timestamp}.key").Handler(createHandler(serverEndpoint{
-		OperationName:       "GetKey",
-		ErrorIfGUNInvalid:   notFoundError,
-		ServerHandler:       handlers.GetKeyHandler,
-		PermissionsRequired: []string{"push", "pull"},
-	}))
-	r.Methods("POST").Path(
-		"/v2/{imageName:.*}/_trust/tuf/{tufRole:snapshot|timestamp}.key").Handler(createHandler(serverEndpoint{
-		OperationName:       "RotateKey",
-		ErrorIfGUNInvalid:   notFoundError,
-		ServerHandler:       handlers.RotateKeyHandler,
-		PermissionsRequired: []string{"*"},
-	}))
-	r.Methods("DELETE").Path("/v2/{imageName:.*}/_trust/tuf/").Handler(createHandler(serverEndpoint{
-		OperationName:       "DeleteTUF",
-		ErrorIfGUNInvalid:   notFoundError,
-		ServerHandler:       handlers.DeleteHandler,
-		PermissionsRequired: []string{"*"},
+		AuthWrapper:         utils.RootHandlerFactory(ac, ctx, trust),
+		RepoPrefixes:        repoPrefixes,
 	}))
 
-	r.Methods("GET").Path("/_notary_server/health").HandlerFunc(health.StatusHandler)
-	r.Methods("GET").Path("/metrics").Handler(prometheus.Handler())
-	r.Methods("GET", "POST", "PUT", "HEAD", "DELETE").Path("/{other:.*}").Handler(
-		authWrapper(handlers.NotFoundHandler))
-
+	// Everything else is handled with standard notary handlers
+	r.Methods("GET", "POST", "PUT", "HEAD", "DELETE").Path("/{other:.*}").Handler(notaryHandler)
 	return r
 }
