@@ -10,12 +10,13 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos-inc/apostille/server"
+	"github.com/coreos-inc/apostille/storage"
 	"github.com/docker/distribution/health"
 	_ "github.com/docker/distribution/registry/auth/htpasswd"
 	_ "github.com/docker/distribution/registry/auth/token"
 	"github.com/docker/go-connections/tlsconfig"
 	"github.com/docker/notary"
-	"github.com/docker/notary/server/storage"
+	notaryStorage "github.com/docker/notary/server/storage"
 	"github.com/docker/notary/signer/client"
 	"github.com/docker/notary/tuf/data"
 	"github.com/docker/notary/tuf/signed"
@@ -82,25 +83,25 @@ func grpcTLS(configuration *viper.Viper) (*tls.Config, error) {
 
 // getStore parses the configuration and returns a backing store for the TUF files
 func getStore(configuration *viper.Viper, hRegister healthRegister) (
-	storage.MetaStore, error) {
-	var store storage.MetaStore
+	notaryStorage.MetaStore, error) {
+	var store notaryStorage.MetaStore
 	backend := configuration.GetString("storage.backend")
 	logrus.Infof("Using %s backend", backend)
 
 	switch backend {
 	case notary.MemoryBackend:
-		return storage.NewMemStorage(), nil
+		return storage.NewMemoryStore(), nil
 
 	case notary.MySQLBackend, notary.SQLiteBackend:
 		storeConfig, err := utils.ParseSQLStorage(configuration)
 		if err != nil {
 			return nil, err
 		}
-		s, err := storage.NewSQLStorage(storeConfig.Backend, storeConfig.Source)
+		s, err := notaryStorage.NewSQLStorage(storeConfig.Backend, storeConfig.Source)
 		if err != nil {
 			return nil, fmt.Errorf("Error starting %s driver: %s", backend, err.Error())
 		}
-		store = *storage.NewTUFMetaStorage(s)
+		store = *notaryStorage.NewTUFMetaStorage(s)
 		hRegister("DB operational", time.Minute, s.CheckHealth)
 
 	default:
