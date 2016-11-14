@@ -1,14 +1,18 @@
 package storage
 
-import notaryStorage "github.com/docker/notary/server/storage"
+import (
+	"sync"
+
+	notaryStorage "github.com/docker/notary/server/storage"
+)
 
 type Username string
 type GUN string
 
 type SignerMetaStore interface {
 	notaryStorage.MetaStore
-	AddUserAsSigner(user Username, gun GUN) error
-	RemoveUserAsSigner(user Username, gun GUN) error
+	AddUserAsSigner(user Username, gun GUN)
+	RemoveUserAsSigner(user Username, gun GUN)
 	IsSigner(user Username, gun GUN) bool
 }
 
@@ -19,6 +23,7 @@ type SignerKey struct {
 
 type MemoryStore struct {
 	notaryStorage.MemStorage
+	lock    sync.Mutex
 	signers map[SignerKey]struct{}
 }
 
@@ -29,14 +34,16 @@ func NewMemoryStore() *MemoryStore {
 	}
 }
 
-func (m *MemoryStore) AddUserAsSigner(user Username, gun GUN) error {
+func (m *MemoryStore) AddUserAsSigner(user Username, gun GUN) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
 	m.signers[SignerKey{user, gun}] = struct{}{}
-	return nil
 }
 
-func (m *MemoryStore) RemoveUserAsSigner(user Username, gun GUN) error {
+func (m *MemoryStore) RemoveUserAsSigner(user Username, gun GUN) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
 	delete(m.signers, SignerKey{user, gun})
-	return nil
 }
 
 func (m *MemoryStore) IsSigner(user Username, gun GUN) bool {
