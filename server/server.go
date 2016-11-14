@@ -125,6 +125,29 @@ func GetMetadataHandler(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	return nil
 }
 
+// UserScopedAtomicUpdateHandler records the username of the incoming request on the metastore, then proxies to
+// notary server's AtomicUpdateHandler
+func UserScopedAtomicUpdateHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	defer r.Body.Close()
+	vars := mux.Vars(r)
+
+	username := storage.Username(ctxutil.GetStringValue(ctx, "auth.user.name"))
+	gun := storage.GUN(vars["imageName"])
+
+	s := ctx.Value("metaStore")
+	logger := ctxutil.GetLoggerWithField(ctx, gun, "gun")
+	store, ok := s.(storage.SignerMetaStore)
+	if !ok {
+		logger.Error("500 GET: no storage exists")
+		return errors.ErrNoStorage.WithDetail(nil)
+	}
+
+	// User must have push access to get here, so we know the user is a signer
+	store.AddUserAsSigner(username, gun)
+
+	return handlers.AtomicUpdateHandler(ctx, w, r)
+}
+
 // TrustMutliplexerHandler wraps a standard notary server router and
 // splits access to different trust roots based on request criteria,
 // e.g. username or URL.
@@ -140,6 +163,18 @@ func TrustMultiplexerHandler(ac auth.AccessController, ctx context.Context, trus
 		repoPrefixes,
 	)
 
+	authWrapper := utils.RootHandlerFactory(ac, ctx, trust)
+
+	// Intercept POST requests to record which user created the TUF repo
+	r.Methods("POST").Path("/v2/{imageName:.*}/_trust/tuf/").Handler(notaryServer.CreateHandler(notaryServer.ServerEndpoint{
+		OperationName:       "UpdateTUF",
+		ErrorIfGUNInvalid:   errors.ErrMetadataNotFound.WithDetail(nil),
+		ServerHandler:       UserScopedAtomicUpdateHandler,
+		PermissionsRequired: []string{"push", "pull"},
+		AuthWrapper:         authWrapper,
+		RepoPrefixes:        repoPrefixes,
+	}))
+
 	// Intercept GET requests for TUF metadata, so we can serve different roots based on username
 	r.Methods("GET").Path("/v2/{imageName:.*}/_trust/tuf/{tufRole:root|targets(?:/[^/\\s]+)*|snapshot|timestamp}.json").Handler(notaryServer.CreateHandler(notaryServer.ServerEndpoint{
 		OperationName:       "GetRole",
@@ -148,7 +183,7 @@ func TrustMultiplexerHandler(ac auth.AccessController, ctx context.Context, trus
 		CacheControlConfig:  current,
 		ServerHandler:       GetMetadataHandler,
 		PermissionsRequired: []string{"pull"},
-		AuthWrapper:         utils.RootHandlerFactory(ac, ctx, trust),
+		AuthWrapper:         authWrapper,
 		RepoPrefixes:        repoPrefixes,
 	}))
 
