@@ -9,7 +9,10 @@ Apostille acts similarly to a [notary server](https://github.com/docker/notary) 
 ```bash
 glide install
 # required: see https://github.com/mattfarina/golang-broken-vendor
-rm -rf vendor/github.com/docker/notary/vendor
+rm -rf vendor/github.com/docker/distribution/vendor   
+rm -rf vendor/github.com/docker/notary/vendor                                                                
 go build ./cmd/apostille/
 ./apostille --config=fixtures/config.json
 ```
+
+Note: updating dependencies may require pinning proto/grpc to the versions used in Notary.
