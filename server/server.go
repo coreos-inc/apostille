@@ -7,8 +7,9 @@ import (
 	"net/http"
 
 	"github.com/Sirupsen/logrus"
+	auth "github.com/coreos-inc/apostille/auth"
 	ctxutil "github.com/docker/distribution/context"
-	"github.com/docker/distribution/registry/auth"
+	registryAuth "github.com/docker/distribution/registry/auth"
 	notaryServer "github.com/docker/notary/server"
 	"github.com/docker/notary/tuf/data"
 	"github.com/docker/notary/tuf/signed"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/coreos-inc/apostille/storage"
 
+	"github.com/docker/notary"
 	"github.com/docker/notary/server/errors"
 	"github.com/docker/notary/server/handlers"
 )
@@ -53,19 +55,15 @@ func Run(ctx context.Context, conf Config) error {
 		lsnr = tls.NewListener(lsnr, conf.TLSConfig)
 	}
 
-	var ac auth.AccessController
-	if conf.AuthMethod == "token" {
-		authOptions, ok := conf.AuthOpts.(map[string]interface{})
-		if !ok {
-			return fmt.Errorf("auth.options must be a map[string]interface{}")
-		}
-		ac, err = auth.GetAccessController(conf.AuthMethod, authOptions)
-		if err != nil {
-			return err
-		}
+	var ac registryAuth.AccessController
+	authOptions, ok := conf.AuthOpts.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("auth.options must be a map[string]interface{}")
 	}
-
-	// The normal notary handler, which is given all requests that we don't care about
+	ac, err = auth.NewKeyserverAccessController(authOptions)
+	if err != nil {
+		return err
+	}
 
 	svr := http.Server{
 		Addr: conf.Addr,
@@ -86,9 +84,12 @@ func GetMetadataHandler(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	defer r.Body.Close()
 	vars := mux.Vars(r)
 
-	username := storage.Username(ctxutil.GetStringValue(ctx, "auth.user.name"))
+	username := storage.Username("")
+	if userInfo, ok := ctx.Value("auth.user").(registryAuth.UserInfo); ok {
+		username = storage.Username(userInfo.Name)
+	}
 	gun := storage.GUN(vars["imageName"])
-	s := ctx.Value("metaStore")
+	s := ctx.Value(notary.CtxKeyMetaStore)
 	logger := ctxutil.GetLoggerWithField(ctx, gun, "gun")
 	store, ok := s.(storage.SignerMetaStore)
 	if !ok {
@@ -105,8 +106,11 @@ func GetMetadataHandler(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	// If user is listed as a signing_user, serve "signer" root
 	// signing users must have push access
 	if userIsSigner {
+		logger.Infof("request user %s is a signer for this repo", username)
 		return handlers.GetHandler(ctx, w, r)
 	}
+
+	logger.Infof("request user %s is not signer for this repo, will be served shared root", username)
 
 	// If not in list of signing users, serve Quay root
 	tufRole := vars["tufRole"]
@@ -131,11 +135,15 @@ func UserScopedAtomicUpdateHandler(ctx context.Context, w http.ResponseWriter, r
 	defer r.Body.Close()
 	vars := mux.Vars(r)
 
-	username := storage.Username(ctxutil.GetStringValue(ctx, "auth.user.name"))
+	username := storage.Username("")
+	if userInfo, ok := ctx.Value("auth.user").(registryAuth.UserInfo); ok {
+		username = storage.Username(userInfo.Name)
+	}
 	gun := storage.GUN(vars["imageName"])
 
-	s := ctx.Value("metaStore")
+	s := ctx.Value(notary.CtxKeyMetaStore)
 	logger := ctxutil.GetLoggerWithField(ctx, gun, "gun")
+
 	store, ok := s.(storage.SignerMetaStore)
 	if !ok {
 		logger.Error("500 GET: no storage exists")
@@ -143,6 +151,7 @@ func UserScopedAtomicUpdateHandler(ctx context.Context, w http.ResponseWriter, r
 	}
 
 	// User must have push access to get here, so we know the user is a signer
+	logger.Infof("Adding %s as a signer for %s", username, gun)
 	store.AddUserAsSigner(username, gun)
 
 	return handlers.AtomicUpdateHandler(ctx, w, r)
@@ -151,19 +160,19 @@ func UserScopedAtomicUpdateHandler(ctx context.Context, w http.ResponseWriter, r
 // TrustMutliplexerHandler wraps a standard notary server router and
 // splits access to different trust roots based on request criteria,
 // e.g. username or URL.
-func TrustMultiplexerHandler(ac auth.AccessController, ctx context.Context, trust signed.CryptoService,
+func TrustMultiplexerHandler(ac registryAuth.AccessController, ctx context.Context, trust signed.CryptoService,
 	consistent, current utils.CacheControlConfig, repoPrefixes []string) http.Handler {
 	r := mux.NewRouter()
 
 	// Standard Notary server handler; calls that we don't care about will be routed here
 	notaryHandler := notaryServer.RootHandler(
-		ac, ctx, trust,
+		ctx, ac, trust,
 		consistent,
 		current,
 		repoPrefixes,
 	)
 
-	authWrapper := utils.RootHandlerFactory(ac, ctx, trust)
+	authWrapper := utils.RootHandlerFactory(ctx, ac, trust)
 
 	// Intercept POST requests to record which user created the TUF repo
 	r.Methods("POST").Path("/v2/{imageName:.*}/_trust/tuf/").Handler(notaryServer.CreateHandler(notaryServer.ServerEndpoint{

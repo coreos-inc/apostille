@@ -166,7 +166,7 @@ func getTrustService(configuration *viper.Viper, sFactory signerFactory,
 		// error.
 		minute,
 		func() error {
-			err := notarySigner.CheckHealth(minute)
+			err := notarySigner.CheckHealth(minute, "trust")
 			if err != nil {
 				logrus.Error("Trust not fully operational: ", err.Error())
 			}
@@ -238,13 +238,13 @@ func parseServerConfig(configFilePath string) (context.Context, server.Config, e
 	if err != nil {
 		return nil, server.Config{}, err
 	}
-	ctx = context.WithValue(ctx, "keyAlgorithm", keyAlgo)
+	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, keyAlgo)
 
 	store, err := getStore(config, health.RegisterPeriodicFunc)
 	if err != nil {
 		return nil, server.Config{}, err
 	}
-	ctx = context.WithValue(ctx, "metaStore", store)
+	ctx = context.WithValue(ctx, notary.CtxKeyMetaStore, store)
 
 	currentCache, consistentCache, err := getCacheConfig(config)
 	if err != nil {
