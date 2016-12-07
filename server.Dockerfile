@@ -16,7 +16,7 @@ WORKDIR /go/src/${APOSTILLE_SRC}
 ENV SERVICE_NAME=apostille
 EXPOSE 4443
 
-# Install notary-server
+# Install apostille
 RUN go install \
     -ldflags "-w" \
     ${APOSTILLE_SRC}/cmd/apostille && apk del git gcc libc-dev

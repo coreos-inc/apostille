@@ -51,7 +51,7 @@ func checkOptions(options map[string]interface{}) (tokenAccessOptions, error) {
 	return opts, nil
 }
 
-// NewKeyserverAccessController creates an keyserverAccessController using the given options.
+// NewKeyserverAccessController creates a keyserverAccessController using the given options.
 func NewKeyserverAccessController(options map[string]interface{}) (registryAuth.AccessController, error) {
 	config, err := checkOptions(options)
 	if err != nil {
@@ -113,7 +113,8 @@ func (ac *keyserverAccessController) Authorized(ctx context.Context, accessItems
 	// parse into pubKey
 	pubKey, err := libtrust.UnmarshalPublicKeyJWK(body)
 	if err != nil {
-		return nil, fmt.Errorf("unable to decode JWK value: %s", err)
+		challenge.err = fmt.Errorf("unable to decode JWK value: %s", err)
+		return nil, challenge
 	}
 	if err = VerifyNonX509(token, ac.issuer, ac.service, pubKey); err != nil {
 		challenge.err = err
