@@ -51,7 +51,8 @@ def parse_args(args=None):
         help="The name of the repo - will be randomly generated if not provided")
     parser.add_argument(
         '-s', '--server', dest="server", type=str,
-        help="Apostille Server to connect to - defaults to http://server:4443")
+        help="Apostille Server to connect to - defaults to http://server:4443",
+        default="http://server:4443")
     parser.add_argument(
         '-u', '--username', dest="username", type=str,
         help="Username to use to log into the Apostille Server (you will be asked for the password")

@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/Sirupsen/logrus"
-	auth "github.com/coreos-inc/apostille/auth"
+	"github.com/coreos-inc/apostille/auth"
 	ctxutil "github.com/docker/distribution/context"
 	registryAuth "github.com/docker/distribution/registry/auth"
 	notaryServer "github.com/docker/notary/server"
@@ -98,6 +98,7 @@ func GetMetadataHandler(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		"gun":      gun,
 		"username": username,
 	}, "gun", "username")
+
 	store, ok := s.(storage.MultiplexingMetaStore)
 	if !ok {
 		logger.Error("500 GET: no storage exists")
@@ -108,10 +109,10 @@ func GetMetadataHandler(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	// signing users must have push access
 	if store.IsSigner(username, gun) {
 		logger.Info("request user is a signer for this repo")
-		ctx = context.WithValue(ctx, notary.CtxKeyMetaStore, store.GetSignerRootMetaStore())
+		ctx = context.WithValue(ctx, notary.CtxKeyMetaStore, store.SignerRootMetaStore())
 	} else {
 		logger.Info("request user is not signer for this repo, will be served shared root")
-		ctx = context.WithValue(ctx, notary.CtxKeyMetaStore, store.GetAlternateRootMetaStore())
+		ctx = context.WithValue(ctx, notary.CtxKeyMetaStore, store.AlternateRootMetaStore())
 	}
 	return handlers.GetHandler(ctx, w, r)
 }

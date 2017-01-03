@@ -30,10 +30,7 @@ function cleanup {
 
 function cleanupAndExit {
     cleanup
-    # Check for existence of SUCCESS
-    ls test_output/SUCCESS
     exitCode=$?
-    rm -rf test_output
     exit $exitCode
 }
 
