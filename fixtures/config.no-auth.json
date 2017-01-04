@@ -12,12 +12,5 @@
 		"backend": "memory"
 	},
 	"auth": {
-		"type": "quaytoken",
-		"options": {
-			"realm": "https://quay.io",
-			"service": "apostille",
-			"issuer": "quay",
-			"keyserver": "https://quay.io"
-		}
   }
 }

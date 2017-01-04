@@ -1,0 +1,24 @@
+version: "2"
+services:
+  server:
+    build:
+      context: .
+      dockerfile: server.Dockerfile
+    networks:
+      srv:
+        aliases:
+          - apostille
+    entrypoint: /usr/bin/env sh
+    command: -c "apostille -config=fixtures/config.no-auth.json"
+  client:
+    build:
+      context: .
+      dockerfile: client.Dockerfile
+    command: python testclient.py
+    volumes:
+      - ./test_output:/test_output
+    networks:
+      - srv
+networks:
+  srv:
+    external: false

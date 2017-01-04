@@ -82,7 +82,7 @@ func grpcTLS(configuration *viper.Viper) (*tls.Config, error) {
 }
 
 // getStore parses the configuration and returns a backing store for the TUF files
-func getStore(configuration *viper.Viper, hRegister healthRegister) (
+func getStore(configuration *viper.Viper, trust signed.CryptoService, hRegister healthRegister) (
 	notaryStorage.MetaStore, error) {
 	var store notaryStorage.MetaStore
 	backend := configuration.GetString("storage.backend")
@@ -90,7 +90,9 @@ func getStore(configuration *viper.Viper, hRegister healthRegister) (
 
 	switch backend {
 	case notary.MemoryBackend:
-		return storage.NewMemoryStore(), nil
+		return storage.NewMultiplexingMemoryStore(
+			notaryStorage.NewMemStorage(),
+			storage.NewAlternateRootMemStorage(trust)), nil
 
 	case notary.MySQLBackend, notary.SQLiteBackend:
 		storeConfig, err := utils.ParseSQLStorage(configuration)
@@ -240,7 +242,7 @@ func parseServerConfig(configFilePath string) (context.Context, server.Config, e
 	}
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, keyAlgo)
 
-	store, err := getStore(config, health.RegisterPeriodicFunc)
+	store, err := getStore(config, trust, health.RegisterPeriodicFunc)
 	if err != nil {
 		return nil, server.Config{}, err
 	}

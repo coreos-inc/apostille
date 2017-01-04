@@ -7,11 +7,10 @@ import (
 	"net/http"
 
 	"github.com/Sirupsen/logrus"
-	auth "github.com/coreos-inc/apostille/auth"
+	"github.com/coreos-inc/apostille/auth"
 	ctxutil "github.com/docker/distribution/context"
 	registryAuth "github.com/docker/distribution/registry/auth"
 	notaryServer "github.com/docker/notary/server"
-	"github.com/docker/notary/tuf/data"
 	"github.com/docker/notary/tuf/signed"
 	"github.com/docker/notary/utils"
 	"github.com/gorilla/mux"
@@ -56,13 +55,18 @@ func Run(ctx context.Context, conf Config) error {
 	}
 
 	var ac registryAuth.AccessController
-	authOptions, ok := conf.AuthOpts.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("auth.options must be a map[string]interface{}")
-	}
-	ac, err = auth.NewKeyserverAccessController(authOptions)
-	if err != nil {
-		return err
+
+	if conf.AuthMethod == "quaytoken" {
+		authOptions, ok := conf.AuthOpts.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("auth.options must be a map[string]interface{}")
+		}
+		ac, err = auth.NewKeyserverAccessController(authOptions)
+		if err != nil {
+			return err
+		}
+	} else {
+		logrus.Warn("No Auth config supplied - all requests will be authorized")
 	}
 
 	svr := http.Server{
@@ -90,43 +94,27 @@ func GetMetadataHandler(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 	gun := storage.GUN(vars["imageName"])
 	s := ctx.Value(notary.CtxKeyMetaStore)
-	logger := ctxutil.GetLoggerWithField(ctx, gun, "gun")
-	store, ok := s.(storage.SignerMetaStore)
+	logger := ctxutil.GetLoggerWithFields(ctx, map[interface{}]interface{}{
+		"gun":      gun,
+		"username": username,
+	}, "gun", "username")
+
+	store, ok := s.(storage.MultiplexingMetaStore)
 	if !ok {
 		logger.Error("500 GET: no storage exists")
 		return errors.ErrNoStorage.WithDetail(nil)
 	}
 
-	// Query DB to find out which root should be served for (username, gun)
-	userIsSigner := false
-	if username != "" && store.IsSigner(username, gun) {
-		userIsSigner = true
-	}
-
 	// If user is listed as a signing_user, serve "signer" root
 	// signing users must have push access
-	if userIsSigner {
-		logger.Infof("request user %s is a signer for this repo", username)
-		return handlers.GetHandler(ctx, w, r)
-	}
-
-	logger.Infof("request user %s is not signer for this repo, will be served shared root", username)
-
-	// If not in list of signing users, serve Quay root
-	tufRole := vars["tufRole"]
-	if tufRole == data.CanonicalRootRole {
-		// serve alternate root
-		return handlers.GetHandler(ctx, w, r)
-
-	} else if tufRole == data.CanonicalSnapshotRole {
-		// serve alternate snapshot
-		return handlers.GetHandler(ctx, w, r)
-
+	if store.IsSigner(username, gun) {
+		logger.Info("request user is a signer for this repo")
+		ctx = context.WithValue(ctx, notary.CtxKeyMetaStore, store.SignerRootMetaStore())
 	} else {
-		// serve normal timestamp/targets
-		return handlers.GetHandler(ctx, w, r)
+		logger.Info("request user is not signer for this repo, will be served shared root")
+		ctx = context.WithValue(ctx, notary.CtxKeyMetaStore, store.AlternateRootMetaStore())
 	}
-	return nil
+	return handlers.GetHandler(ctx, w, r)
 }
 
 // UserScopedAtomicUpdateHandler records the username of the incoming request on the metastore, then proxies to
@@ -144,15 +132,17 @@ func UserScopedAtomicUpdateHandler(ctx context.Context, w http.ResponseWriter, r
 	s := ctx.Value(notary.CtxKeyMetaStore)
 	logger := ctxutil.GetLoggerWithField(ctx, gun, "gun")
 
-	store, ok := s.(storage.SignerMetaStore)
+	store, ok := s.(storage.MultiplexingMetaStore)
 	if !ok {
 		logger.Error("500 GET: no storage exists")
 		return errors.ErrNoStorage.WithDetail(nil)
 	}
 
 	// User must have push access to get here, so we know the user is a signer
-	logger.Infof("Adding %s as a signer for %s", username, gun)
-	store.AddUserAsSigner(username, gun)
+	if !store.IsSigner(username, gun) {
+		logger.Infof("Adding %s as a signer for %s", username, gun)
+		store.AddUserAsSigner(username, gun)
+	}
 
 	return handlers.AtomicUpdateHandler(ctx, w, r)
 }
@@ -173,6 +163,7 @@ func TrustMultiplexerHandler(ac registryAuth.AccessController, ctx context.Conte
 	)
 
 	authWrapper := utils.RootHandlerFactory(ctx, ac, trust)
+	notFoundError := errors.ErrMetadataNotFound.WithDetail(nil)
 
 	// Intercept POST requests to record which user created the TUF repo
 	r.Methods("POST").Path("/v2/{imageName:.*}/_trust/tuf/").Handler(notaryServer.CreateHandler(notaryServer.ServerEndpoint{
@@ -185,9 +176,29 @@ func TrustMultiplexerHandler(ac registryAuth.AccessController, ctx context.Conte
 	}))
 
 	// Intercept GET requests for TUF metadata, so we can serve different roots based on username
-	r.Methods("GET").Path("/v2/{imageName:.*}/_trust/tuf/{tufRole:root|targets(?:/[^/\\s]+)*|snapshot|timestamp}.json").Handler(notaryServer.CreateHandler(notaryServer.ServerEndpoint{
+	r.Methods("GET").Path("/v2/{imageName:[^*]+}/_trust/tuf/{tufRole:root|targets(?:/[^/\\s]+)*|snapshot|timestamp}.{checksum:[a-fA-F0-9]{64}|[a-fA-F0-9]{96}|[a-fA-F0-9]{128}}.json").Handler(notaryServer.CreateHandler(notaryServer.ServerEndpoint{
+		OperationName:       "GetRoleByHash",
+		ErrorIfGUNInvalid:   notFoundError,
+		IncludeCacheHeaders: true,
+		CacheControlConfig:  consistent,
+		ServerHandler:       GetMetadataHandler,
+		PermissionsRequired: []string{"pull"},
+		AuthWrapper:         authWrapper,
+		RepoPrefixes:        repoPrefixes,
+	}))
+	r.Methods("GET").Path("/v2/{imageName:[^*]+}/_trust/tuf/{version:[1-9]*[0-9]+}.{tufRole:root|targets(?:/[^/\\s]+)*|snapshot|timestamp}.json").Handler(notaryServer.CreateHandler(notaryServer.ServerEndpoint{
+		OperationName:       "GetRoleByVersion",
+		ErrorIfGUNInvalid:   notFoundError,
+		IncludeCacheHeaders: true,
+		CacheControlConfig:  consistent,
+		ServerHandler:       GetMetadataHandler,
+		PermissionsRequired: []string{"pull"},
+		AuthWrapper:         authWrapper,
+		RepoPrefixes:        repoPrefixes,
+	}))
+	r.Methods("GET").Path("/v2/{imageName:[^*]+}/_trust/tuf/{tufRole:root|targets(?:/[^/\\s]+)*|snapshot|timestamp}.json").Handler(notaryServer.CreateHandler(notaryServer.ServerEndpoint{
 		OperationName:       "GetRole",
-		ErrorIfGUNInvalid:   errors.ErrMetadataNotFound.WithDetail(nil),
+		ErrorIfGUNInvalid:   notFoundError,
 		IncludeCacheHeaders: true,
 		CacheControlConfig:  current,
 		ServerHandler:       GetMetadataHandler,
