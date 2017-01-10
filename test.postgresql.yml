@@ -1,0 +1,44 @@
+version: "2"
+services:
+  server:
+    build:
+      context: .
+      dockerfile: server.Dockerfile
+    networks:
+      - mdb
+      - srv
+    ports:
+      - "8080"
+      - "4443:4443"
+    entrypoint: /usr/bin/env sh
+    command: -c "./migrations/migrate.sh && apostille -config=fixtures/config.postgres.json"
+    environment:
+      MIGRATIONS_PATH: migrations/postgresql
+      DB_URL: postgres://server@postgresql:5432/apostille?sslmode=disable
+    depends_on:
+      - postgresql
+  postgresql:
+    image: postgres:9.5.4
+    networks:
+      - mdb
+    volumes:
+      - ./aposql/postgresql-initdb.d:/docker-entrypoint-initdb.d
+      - apostille_data:/var/lib/postgresql
+    ports:
+      - 5432:5432
+  client:
+    build:
+      context: .
+      dockerfile: client.Dockerfile
+    command: python testclient.py
+    networks:
+      - mdb
+      - srv
+volumes:
+  apostille_data:
+    external: false
+networks:
+  mdb:
+    external: false
+  srv:
+    external: false

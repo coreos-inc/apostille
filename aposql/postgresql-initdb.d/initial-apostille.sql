@@ -1,0 +1,3 @@
+CREATE DATABASE apostille;
+CREATE USER server;
+GRANT ALL PRIVILEGES ON DATABASE apostille TO server;
