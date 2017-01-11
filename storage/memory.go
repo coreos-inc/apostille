@@ -30,17 +30,19 @@ func NewSignerMemoryStore() *SignerMemoryStore {
 }
 
 // AddUserAsSigner adds a user to the signing group for a GUN
-func (st *SignerMemoryStore) AddUserAsSigner(user Username, gun GUN) {
+func (st *SignerMemoryStore) AddUserAsSigner(user Username, gun GUN) error {
 	st.lock.Lock()
 	defer st.lock.Unlock()
 	st.signers[SignerKey{user, gun}] = struct{}{}
+	return nil
 }
 
 // RemoveUserAsSigner removes a user from the signing group for a GUN
-func (st *SignerMemoryStore) RemoveUserAsSigner(user Username, gun GUN) {
+func (st *SignerMemoryStore) RemoveUserAsSigner(user Username, gun GUN) error {
 	st.lock.Lock()
 	defer st.lock.Unlock()
 	delete(st.signers, SignerKey{user, gun})
+	return nil
 }
 
 // IsSigner returns whether or not a user is in the group of signers for a GUN

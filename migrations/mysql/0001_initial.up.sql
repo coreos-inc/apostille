@@ -61,6 +61,16 @@ CREATE TABLE `alternate_changefeed` (
     INDEX `idx_changefeed_gun` (`gun`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+CREATE TABLE `signers` (
+	`id`         INT(11)       NOT NULL AUTO_INCREMENT,
+	`created_at` TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
+  `deleted_at` timestamp NULL DEFAULT NULL,
+	`gun` 			 VARCHAR(255)  NOT NULL,
+	`signer`     VARCHAR(255)  NOT NULL,
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `gun` (`gun`,`signer`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
 -- SHA2 function takes the column name or a string as the first parameter, and the
 -- hash size as the second argument. It returns a hex string.
 UPDATE `tuf_files` SET `sha256` = SHA2(`data`, 256);

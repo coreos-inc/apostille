@@ -129,7 +129,7 @@ func getStore(configuration *viper.Viper, trust signed.CryptoService, hRegister 
 		alternateRootStore = notaryStorage.NewTUFMetaStorage(as)
 
 		// SignerStore
-		signerStore = storage.NewSignerMemoryStore()
+		signerStore = storage.NewSignerSQLStorage(s.DB)
 		hRegister("DB operational", time.Minute, s.CheckHealth)
 
 	default:

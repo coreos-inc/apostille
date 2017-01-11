@@ -56,3 +56,12 @@ CREATE TABLE "alternate_changefeed" (
 );
 
 CREATE INDEX "idx_alternate_changefeed_gun" ON "alternate_changefeed" ("gun");
+
+CREATE TABLE "signers" (
+  "id" serial PRIMARY KEY,
+	"created_at" TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
+  "deleted_at" timestamp NULL DEFAULT NULL,
+	"gun" 			 VARCHAR(255)  NOT NULL,
+	"signer"     VARCHAR(255)  NOT NULL,
+	UNIQUE ("gun","signer")
+);
