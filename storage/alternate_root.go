@@ -27,6 +27,14 @@ type AlternateRootStore struct {
 	cryptoService signed.CryptoService
 }
 
+// NewAlternateRootStorage builds an alternate rooted metastore
+func NewAlternateRootStorage(cs signed.CryptoService, store notaryStorage.MetaStore) (*AlternateRootStore, error) {
+	return &AlternateRootStore{
+		store,
+		cs,
+	}, nil
+}
+
 // UpdateMany updates multiple TUF records at once
 // Since this roots all changes to the alternate root, we ignore changes to Root/Snapshot/TS here
 // and instead update those manually whenever targets data changes
@@ -35,24 +43,37 @@ func (st *AlternateRootStore) UpdateMany(gun string, updates []notaryStorage.Met
 	var repo *tuf.Repo
 
 	// Attempt to load root roles
+	altRootExists := true
 	_, currentRoot, err := st.GetCurrent(gun, data.CanonicalRootRole)
-	logrus.Info("Checking for existing repo - error loading root: ", err)
-	_, currentSnapshot, err := st.GetCurrent(gun, data.CanonicalSnapshotRole)
-	logrus.Info("Checking for existing repo - error loading snapshot: ", err)
-	_, currentTargets, err := st.GetCurrent(gun, data.CanonicalTargetsRole)
-	logrus.Info("Checking for existing repo - error loading targets: ", err)
+	if err != nil {
+		altRootExists = false
+		logrus.Info("Checking for existing repo - error loading root: ", err)
+	}
 
-	// repo exists, load current root roles into temporary tuf repo
-	if err == nil {
-		repoBuilder.Load(data.CanonicalRootRole, currentRoot, -1, false)
-		repoBuilder.Load(data.CanonicalSnapshotRole, currentSnapshot, -1, false)
-		repoBuilder.Load(data.CanonicalTargetsRole, currentTargets, -1, false)
+	_, currentSnapshot, err := st.GetCurrent(gun, data.CanonicalSnapshotRole)
+	if err != nil {
+		altRootExists = false
+		logrus.Info("Checking for existing repo - error loading snapshot: ", err)
+	}
+
+	_, currentTargets, err := st.GetCurrent(gun, data.CanonicalTargetsRole)
+	if err != nil {
+		altRootExists = false
+		logrus.Info("Checking for existing repo - error loading targets: ", err)
+	}
+
+	if altRootExists {
+		logrus.Info("Alternate root found, loading...")
+		repoBuilder.Load(data.CanonicalRootRole, currentRoot, -1, true)
+		repoBuilder.Load(data.CanonicalSnapshotRole, currentSnapshot, -1, true)
+		repoBuilder.Load(data.CanonicalTargetsRole, currentTargets, -1, true)
 		repo, _, err = repoBuilder.Finish()
 		if err != nil {
 			return err
 		}
 	} else {
-		// bootstrap a new repo (no root exists)
+		logrus.Info("No existing alternate root found, bootstrapping one for ", gun)
+
 		rootKey, err := st.cryptoService.Create(data.CanonicalRootRole, gun, data.ED25519Key)
 		if err != nil {
 			return err

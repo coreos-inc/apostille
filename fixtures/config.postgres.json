@@ -1,0 +1,17 @@
+{
+	"server": {
+		"http_addr": ":4443"
+	},
+	"trust_service": {
+	  "type": "local"
+	},
+	"logging": {
+		"level": "debug"
+	},
+	"storage": {
+		"backend": "postgres",
+		"db_url": "postgres://server@postgresql:5432/apostille?sslmode=disable"
+	},
+	"auth": {
+  	}
+}

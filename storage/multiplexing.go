@@ -12,47 +12,36 @@ import (
 // To accomplish this, it stores a set of signing users for each repo
 type MultiplexingMetaStore interface {
 	notaryStorage.MetaStore
+	SignerStore
 	SignerRootMetaStore() notaryStorage.MetaStore
 	AlternateRootMetaStore() notaryStorage.MetaStore
-	AddUserAsSigner(user Username, gun GUN)
-	RemoveUserAsSigner(user Username, gun GUN)
-	IsSigner(user Username, gun GUN) bool
 }
 
-// MultiplexingMemoryStore implements the MultiplexingMetaStore interface
+// MultiplexingStore implements the MultiplexingMetaStore interface
 type MultiplexingStore struct {
 	lock                   sync.Mutex
 	signerRootMetaStore    notaryStorage.MetaStore
 	alternateRootMetaStore notaryStorage.MetaStore
-	signers                map[SignerKey]struct{}
+	SignerStore
 }
 
+// NewMultiplexingStore composes a new Multiplexing store instance from underlying stores.
+func NewMultiplexingStore(store notaryStorage.MetaStore, alternateRootStore notaryStorage.MetaStore, signerStore SignerStore) *MultiplexingStore {
+	return &MultiplexingStore{
+		signerRootMetaStore:    store,
+		alternateRootMetaStore: alternateRootStore,
+		SignerStore: signerStore,
+	}
+}
+
+// SignerRootMetaStore returns the root of trust served to signers
 func (st *MultiplexingStore) SignerRootMetaStore() notaryStorage.MetaStore {
 	return st.signerRootMetaStore
 }
 
+// AlternateRootMetaStore returns the root of trust served to non-signers
 func (st *MultiplexingStore) AlternateRootMetaStore() notaryStorage.MetaStore {
 	return st.alternateRootMetaStore
-}
-
-// AddUserAsSigner adds a user to the signing group for a GUN
-func (st *MultiplexingStore) AddUserAsSigner(user Username, gun GUN) {
-	st.lock.Lock()
-	defer st.lock.Unlock()
-	st.signers[SignerKey{user, gun}] = struct{}{}
-}
-
-// RemoveUserAsSigner removes a user from the signing group for a GUN
-func (st *MultiplexingStore) RemoveUserAsSigner(user Username, gun GUN) {
-	st.lock.Lock()
-	defer st.lock.Unlock()
-	delete(st.signers, SignerKey{user, gun})
-}
-
-// IsSigner returns whether or not a user is in the group of signers for a GUN
-func (st *MultiplexingStore) IsSigner(user Username, gun GUN) bool {
-	_, ok := st.signers[SignerKey{user, gun}]
-	return ok
 }
 
 // UpdateMany updates multiple TUF records at once
@@ -75,7 +64,7 @@ func (st *MultiplexingStore) UpdateMany(gun string, updates []notaryStorage.Meta
 	return nil
 }
 
-// Below methods simply proxy to the underlying store
+// Below methods simply proxy to the underlying store, but lock on the containing store
 
 // UpdateCurrent updates the meta data for a specific role
 func (st *MultiplexingStore) UpdateCurrent(gun string, update notaryStorage.MetaUpdate) error {

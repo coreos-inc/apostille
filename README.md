@@ -16,3 +16,13 @@ go build ./cmd/apostille/
 ```
 
 Note: updating dependencies may require pinning proto/grpc to the versions used in Notary.
+
+# Running tests
+
+Client (notary) integration tests:
+
+```bash
+tests/integration.sh mem
+tests/integration.sh mysql
+tests/integration.sh postgresql
+```

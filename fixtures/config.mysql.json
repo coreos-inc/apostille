@@ -1,0 +1,17 @@
+{
+	"server": {
+		"http_addr": ":4443"
+	},
+	"trust_service": {
+	  "type": "local"
+	},
+	"logging": {
+		"level": "debug"
+	},
+	"storage": {
+		"backend": "mysql",
+		"db_url": "server@tcp(mysql:3306)/apostille?parseTime=True"
+	},
+	"auth": {
+  	}
+}

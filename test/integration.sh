@@ -8,14 +8,11 @@ case ${db} in
   mysql*)
     db="mysql"
     ;;
-  rethink*)
-    db="rethink"
-    ;;
   postgresql*)
     db="postgresql"
     ;;
   *)
-    echo "Usage: $0 (mem|mysql|rethink|postgresql)"
+    echo "Usage: $0 (mem|mysql|postgresql)"
     exit 1
     ;;
 esac
@@ -46,4 +43,4 @@ docker-compose -p "${project}_${db}" -f ${composeFile} build ${BUILDOPTS} --pull
 
 trap cleanupAndExit SIGINT SIGTERM EXIT
 
-docker-compose -p "${project}_${db}" -f ${composeFile} up --abort-on-container-exit
+docker-compose -p "${project}_${db}" -f ${composeFile} up  --abort-on-container-exit
