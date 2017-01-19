@@ -40,7 +40,7 @@ services:
       - srv
   signer:
     build:
-      context: /Users/evan/gocode/src/github.com/docker/notary
+      context: vendor/github.com/docker/notary
       dockerfile: signer.Dockerfile
     networks:
       mdb:
