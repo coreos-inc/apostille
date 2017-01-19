@@ -3,7 +3,10 @@
 		"http_addr": ":4443"
 	},
 	"trust_service": {
-	  "type": "local"
+		"type": "remote",
+		"hostname": "notarysigner",
+		"port": "7899",
+		"key_algorithm": "ecdsa"
 	},
 	"logging": {
 		"level": "debug"
@@ -12,5 +15,6 @@
 		"backend": "memory"
 	},
 	"auth": {
-  }
+		"type": "testing"
+	}
 }

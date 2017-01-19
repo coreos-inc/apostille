@@ -9,7 +9,7 @@ services:
         aliases:
           - apostille
     entrypoint: /usr/bin/env sh
-    command: -c "apostille -config=fixtures/config.no-auth.json"
+    command: -c "apostille -config=fixtures/config.mem.json"
   client:
     build:
       context: .

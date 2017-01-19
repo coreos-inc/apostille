@@ -67,8 +67,11 @@ func Run(ctx context.Context, conf Config) error {
 		if err != nil {
 			return err
 		}
+	} else if conf.AuthMethod == "testing" {
+		logrus.Warn("Test Auth config enabled - all requests will be authorized as user 'test_user'")
+		ac = auth.NewTestingAccessController("test_user")
 	} else {
-		logrus.Warn("No Auth config supplied - all requests will be authorized")
+		return fmt.Errorf("No auth config supplied - use 'testing' if mock auth is desired")
 	}
 
 	svr := http.Server{

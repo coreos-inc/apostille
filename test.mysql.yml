@@ -6,16 +6,19 @@ services:
       dockerfile: server.Dockerfile
     networks:
       mdb:
+      sig:
       srv:
         aliases:
           - apostille
     entrypoint: /usr/bin/env sh
     command: -c "./migrations/migrate.sh && apostille -config=fixtures/config.mysql.json"
     depends_on:
+      - signer
       - mysql
   mysql:
     networks:
       - mdb
+      - sig
     volumes:
       - ./aposql/mysql-initdb.d:/docker-entrypoint-initdb.d
     image: mariadb:10.1.10
@@ -33,8 +36,24 @@ services:
     networks:
       - mdb
       - srv
+  signer:
+    build:
+      context: /Users/evan/gocode/src/github.com/docker/notary
+      dockerfile: signer.Dockerfile
+    networks:
+      sig:
+        aliases:
+          - notarysigner
+    entrypoint: /usr/bin/env sh
+    environment:
+      - GOPATH=/go/src/vendor
+    command: -c "./migrations/migrate.sh && notary-signer -config=fixtures/signer-config.json"
+    depends_on:
+      - mysql
 networks:
   mdb:
     external: false
   srv:
+    external: false
+  sig:
     external: false

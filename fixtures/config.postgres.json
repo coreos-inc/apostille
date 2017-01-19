@@ -19,5 +19,6 @@
 		"db_url": "postgres://server@postgresql:5432/apostille?sslmode=disable"
 	},
 	"auth": {
-  	}
+		"type": "testing"
+	}
 }
