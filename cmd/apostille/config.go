@@ -25,6 +25,8 @@ import (
 	tufUtils "github.com/docker/notary/tuf/utils"
 	"github.com/docker/notary/utils"
 	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
+
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 )
@@ -325,7 +327,7 @@ func loadQuayRoot(cs signed.CryptoService) (*tuf.Repo, error) {
 		return nil, err
 	}
 
-	_, err = repo.SignRoot(data.DefaultExpires(data.CanonicalRootRole))
+	_, err = repo.SignRoot(data.DefaultExpires(data.CanonicalRootRole), nil)
 	if err != nil {
 		return nil, err
 	}

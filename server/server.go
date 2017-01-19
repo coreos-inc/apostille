@@ -97,7 +97,7 @@ func GetMetadataHandler(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	if userInfo, ok := ctx.Value("auth.user").(registryAuth.UserInfo); ok {
 		username = storage.Username(userInfo.Name)
 	}
-	gun := storage.GUN(vars["imageName"])
+	gun := storage.GUN(vars["gun"])
 	s := ctx.Value(notary.CtxKeyMetaStore)
 	logger := ctxutil.GetLoggerWithFields(ctx, map[interface{}]interface{}{
 		"gun":      gun,
@@ -132,7 +132,7 @@ func UserScopedAtomicUpdateHandler(ctx context.Context, w http.ResponseWriter, r
 	if userInfo, ok := ctx.Value("auth.user").(registryAuth.UserInfo); ok {
 		username = storage.Username(userInfo.Name)
 	}
-	gun := storage.GUN(vars["imageName"])
+	gun := storage.GUN(vars["gun"])
 
 	s := ctx.Value(notary.CtxKeyMetaStore)
 	logger := ctxutil.GetLoggerWithField(ctx, gun, "gun")
@@ -173,7 +173,7 @@ func TrustMultiplexerHandler(ac registryAuth.AccessController, ctx context.Conte
 	notFoundError := errors.ErrMetadataNotFound.WithDetail(nil)
 
 	// Intercept POST requests to record which user created the TUF repo
-	r.Methods("POST").Path("/v2/{imageName:.*}/_trust/tuf/").Handler(notaryServer.CreateHandler(notaryServer.ServerEndpoint{
+	r.Methods("POST").Path("/v2/{gun:.*}/_trust/tuf/").Handler(notaryServer.CreateHandler(notaryServer.EndpointConfig{
 		OperationName:       "UpdateTUF",
 		ErrorIfGUNInvalid:   errors.ErrMetadataNotFound.WithDetail(nil),
 		ServerHandler:       UserScopedAtomicUpdateHandler,
@@ -183,7 +183,7 @@ func TrustMultiplexerHandler(ac registryAuth.AccessController, ctx context.Conte
 	}))
 
 	// Intercept GET requests for TUF metadata, so we can serve different roots based on username
-	r.Methods("GET").Path("/v2/{imageName:[^*]+}/_trust/tuf/{tufRole:root|targets(?:/[^/\\s]+)*|snapshot|timestamp}.{checksum:[a-fA-F0-9]{64}|[a-fA-F0-9]{96}|[a-fA-F0-9]{128}}.json").Handler(notaryServer.CreateHandler(notaryServer.ServerEndpoint{
+	r.Methods("GET").Path("/v2/{gun:[^*]+}/_trust/tuf/{tufRole:root|targets(?:/[^/\\s]+)*|snapshot|timestamp}.{checksum:[a-fA-F0-9]{64}|[a-fA-F0-9]{96}|[a-fA-F0-9]{128}}.json").Handler(notaryServer.CreateHandler(notaryServer.EndpointConfig{
 		OperationName:       "GetRoleByHash",
 		ErrorIfGUNInvalid:   notFoundError,
 		IncludeCacheHeaders: true,
@@ -193,7 +193,7 @@ func TrustMultiplexerHandler(ac registryAuth.AccessController, ctx context.Conte
 		AuthWrapper:         authWrapper,
 		RepoPrefixes:        repoPrefixes,
 	}))
-	r.Methods("GET").Path("/v2/{imageName:[^*]+}/_trust/tuf/{version:[1-9]*[0-9]+}.{tufRole:root|targets(?:/[^/\\s]+)*|snapshot|timestamp}.json").Handler(notaryServer.CreateHandler(notaryServer.ServerEndpoint{
+	r.Methods("GET").Path("/v2/{gun:[^*]+}/_trust/tuf/{version:[1-9]*[0-9]+}.{tufRole:root|targets(?:/[^/\\s]+)*|snapshot|timestamp}.json").Handler(notaryServer.CreateHandler(notaryServer.EndpointConfig{
 		OperationName:       "GetRoleByVersion",
 		ErrorIfGUNInvalid:   notFoundError,
 		IncludeCacheHeaders: true,
@@ -203,7 +203,7 @@ func TrustMultiplexerHandler(ac registryAuth.AccessController, ctx context.Conte
 		AuthWrapper:         authWrapper,
 		RepoPrefixes:        repoPrefixes,
 	}))
-	r.Methods("GET").Path("/v2/{imageName:[^*]+}/_trust/tuf/{tufRole:root|targets(?:/[^/\\s]+)*|snapshot|timestamp}.json").Handler(notaryServer.CreateHandler(notaryServer.ServerEndpoint{
+	r.Methods("GET").Path("/v2/{gun:[^*]+}/_trust/tuf/{tufRole:root|targets(?:/[^/\\s]+)*|snapshot|timestamp}.json").Handler(notaryServer.CreateHandler(notaryServer.EndpointConfig{
 		OperationName:       "GetRole",
 		ErrorIfGUNInvalid:   notFoundError,
 		IncludeCacheHeaders: true,
