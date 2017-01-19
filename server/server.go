@@ -21,6 +21,7 @@ import (
 	"github.com/docker/notary"
 	"github.com/docker/notary/server/errors"
 	"github.com/docker/notary/server/handlers"
+	"github.com/docker/notary/tuf"
 )
 
 // Config tells Run how to configure a server
@@ -33,6 +34,7 @@ type Config struct {
 	RepoPrefixes                 []string
 	ConsistentCacheControlConfig utils.CacheControlConfig
 	CurrentCacheControlConfig    utils.CacheControlConfig
+	QuayRootRepo		     *tuf.Repo
 }
 
 // Run sets up and starts a TLS server that can be cancelled using the
@@ -141,7 +143,9 @@ func UserScopedAtomicUpdateHandler(ctx context.Context, w http.ResponseWriter, r
 	// User must have push access to get here, so we know the user is a signer
 	if !store.IsSigner(username, gun) {
 		logger.Infof("Adding %s as a signer for %s", username, gun)
-		store.AddUserAsSigner(username, gun)
+		if err := store.AddUserAsSigner(username, gun); err != nil {
+			logger.Error("Unable to add %s as a signer for %s: %v", username, gun, err)
+		}
 	}
 
 	return handlers.AtomicUpdateHandler(ctx, w, r)

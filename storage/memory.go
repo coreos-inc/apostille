@@ -5,13 +5,16 @@ import (
 	notaryStorage "github.com/docker/notary/server/storage"
 	"github.com/docker/notary/tuf/signed"
 	"sync"
+	"github.com/docker/notary/tuf"
 )
 
 // NewAlternateRootMemStorage instantiates an alternately rooted metadata tree in memory
-func NewAlternateRootMemStorage(cs signed.CryptoService) *AlternateRootStore {
+func NewAlternateRootMemStorage(cs signed.CryptoService, repo tuf.Repo, signerStore notaryStorage.MetaStore) *AlternateRootStore {
 	return &AlternateRootStore{
 		notaryStorage.NewMemStorage(),
 		cs,
+		repo,
+		signerStore,
 	}
 }
 

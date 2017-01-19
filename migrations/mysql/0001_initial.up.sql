@@ -64,6 +64,7 @@ CREATE TABLE `alternate_changefeed` (
 CREATE TABLE `signers` (
 	`id`         INT(11)       NOT NULL AUTO_INCREMENT,
 	`created_at` TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
 	`gun` 			 VARCHAR(255)  NOT NULL,
 	`signer`     VARCHAR(255)  NOT NULL,
