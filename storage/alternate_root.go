@@ -200,7 +200,7 @@ func (st *AlternateRootStore) swizzleTargets(gun string, updates []notaryStorage
 		if err = repo.ReplaceBaseKeys(data.CanonicalRootRole, publicCerts...); err != nil {
 			return nil, err
 		}
-		if _, err = repo.SignRoot(data.DefaultExpires(data.CanonicalRootRole)); err != nil {
+		if _, err = repo.SignRoot(data.DefaultExpires(data.CanonicalRootRole), nil); err != nil {
 			return nil, err
 		}
 	}

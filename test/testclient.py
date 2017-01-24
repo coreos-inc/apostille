@@ -170,52 +170,12 @@ class Tester(object):
             # skip username/password since this is an offline operation
             username_passwd=())
 
-    def add_delegation_test(self, tempfile, tempdir):
-        """
-        Add a delegation to the repo - assumes the repo has already been initialized
-        """
-        print("---- Rotating the snapshot key to server and adding a delegation ----\n")
-        self.client.run(["key", "rotate", self.repo_name, "snapshot", "-r"], self.dir)
-        self.client.run(
-            ["delegation", "add", self.repo_name, "targets/releases",
-             os.path.join(reporoot(), "notary", "fixtures", "secure.example.com.crt"), "--all-paths"],
-            self.dir)
-        self.client.run(["publish", self.repo_name], self.dir)
-
-        print("---- Listing delegations ----\n")
-        delegations1 = self.client.run(["delegation", "list", self.repo_name], self.dir)
-        delegations2 = self.client.run(["delegation", "list", self.repo_name], tempdir)
-
-        assert delegations1 == delegations2, "delegation lists not equal: \n{0}\n{1}".format(
-            delegations1, delegations2)
-        assert "targets/releases" in delegations1, "targets/releases delegation not added"
-
-        # add key to tempdir, publish target
-        print("---- Publishing a target using a delegation ----\n")
-        self.client.run(
-            ["key", "import", os.path.join(reporoot(), "notary", "fixtures", "secure.example.com.key"),
-             "-r", "targets/releases"],
-            tempdir)
-        self.client.run(
-            ["add", self.repo_name, "add_delegation_test", tempfile, "-r", "targets/releases"],
-            tempdir)
-        self.client.run(["publish", self.repo_name], tempdir)
-
-        print("---- Listing and validating delegation repo test targets ----\n")
-        targets1 = self.client.run(["list", self.repo_name], self.dir)
-        targets2 = self.client.run(["list", self.repo_name], tempdir)
-
-        assert targets1 == targets2, "targets lists not equal: \n{0}\n{1}".format(
-            targets1, targets2)
-        expected_target = [line for line in targets1.split("\n")
-                           if line.strip().startswith("add_delegation_test") and
-                           line.strip().endswith("targets/releases")]
-        assert len(expected_target) == 1, "could not find target added to targets/releases"
-
     def root_rotation_test(self, tempfile, tempdir):
         """
         Test root rotation
         """
+        self.client.run(["key", "rotate", self.repo_name, "snapshot", "-r"], self.dir)
+
         print("---- Figuring out what the old keys are  ----\n")
 
         # update the tempdir
@@ -258,14 +218,6 @@ class Tester(object):
 
         print("---- Ensuring we can still publish  ----\n")
         # make sure we can still publish from both repos
-        self.client.run(
-            ["key", "import", os.path.join(reporoot(), "notary", "fixtures", "secure.example.com.key"),
-             "-r", "targets/releases"],
-            tempdir)
-        self.client.run(
-            ["add", self.repo_name, "root_rotation_test_delegation_add", tempfile,
-             "-r", "targets/releases"],
-            tempdir)
         self.client.run(["publish", self.repo_name], tempdir)
         self.client.run(["add", self.repo_name, "root_rotation_test_targets_add", tempfile],
                         self.dir)
@@ -280,16 +232,14 @@ class Tester(object):
         lines = [line.strip() for line in targets1.split("\n")]
         expected_targets = [
             line for line in lines
-            if (line.startswith("root_rotation_test_delegation_add") and
-                line.endswith("targets/releases"))
-            or (line.startswith("root_rotation_test_targets_add") and line.endswith("targets"))]
-        assert len(expected_targets) == 2
+            if (line.startswith("root_rotation_test_targets_add") and line.endswith("targets"))]
+        assert len(expected_targets) == 1
 
     def run(self):
         """
         Run tests
         """
-        for test_func in (self.basic_repo_test, self.add_delegation_test, self.root_rotation_test):
+        for test_func in (self.basic_repo_test, self.root_rotation_test):
             _, tempfile = mkstemp()
             with open(tempfile, 'wb') as handle:
                 handle.write(test_func.__name__ + "\n")

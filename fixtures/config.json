@@ -3,21 +3,28 @@
 		"http_addr": ":4443"
 	},
 	"trust_service": {
-	  "type": "local"
+		"type": "remote",
+		"hostname": "notarysigner",
+		"port": "7899",
+		"tls_ca_file": "./test_certs/root-ca.crt",
+		"key_algorithm": "ecdsa",
+		"tls_client_cert": "./test_certs/notary-server.crt",
+		"tls_client_key": "./test_certs/notary-server.key"
 	},
 	"logging": {
 		"level": "debug"
 	},
 	"storage": {
-		"backend": "memory"
+		"backend": "mysql",
+		"db_url": "server@tcp(mysql:3306)/apostille?parseTime=True"
 	},
 	"auth": {
 		"type": "quaytoken",
 		"options": {
-			"realm": "https://quay.io",
-			"service": "apostille",
+			"realm": "https://quay.io:443",
+			"service": "quay.io",
 			"issuer": "quay",
-			"keyserver": "https://quay.io"
+			"keyserver": "https://quay.io/keys"
 		}
-  }
+    }
 }
