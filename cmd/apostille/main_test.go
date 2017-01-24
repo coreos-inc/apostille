@@ -21,6 +21,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
+	"github.com/surullabs/lint"
 )
 
 const (
@@ -28,6 +29,13 @@ const (
 	Key  = "../../fixtures/notary-server.key"
 	Root = "../../fixtures/root-ca.crt"
 )
+
+
+func TestLint(t *testing.T) {
+	if err := lint.Default.Check("./..."); err != nil {
+		t.Fatal("lint failures: %v", err)
+	}
+}
 
 // initializes a viper object with test configuration
 func configure(jsonConfig string) *viper.Viper {
@@ -290,8 +298,7 @@ func TestGetStoreInvalid(t *testing.T) {
 	config := `{"storage": {"backend": "asdf", "db_url": "doesnt_matter_what_value_this_is"}}`
 
 	var registerCalled = 0
-
-	_, err := getStore(configure(config), fakeRegisterer(&registerCalled), false)
+	_, err := getStore(configure(config),nil, nil, fakeRegisterer(&registerCalled))
 	require.Error(t, err)
 
 	// no health function ever registered
@@ -309,7 +316,7 @@ func TestGetStoreDBStore(t *testing.T) {
 
 	var registerCalled = 0
 
-	store, err := getStore(configure(config), fakeRegisterer(&registerCalled), false)
+	store, err := getStore(configure(config),nil, nil, fakeRegisterer(&registerCalled))
 	require.NoError(t, err)
 	_, ok := store.(storage.TUFMetaStorage)
 	require.True(t, ok)
@@ -333,7 +340,7 @@ func TestGetStoreRethinkDBStoreConnectionFails(t *testing.T) {
 
 	var registerCalled = 0
 
-	_, err := getStore(configure(config), fakeRegisterer(&registerCalled), false)
+	_, err := getStore(configure(config),nil, nil, fakeRegisterer(&registerCalled))
 	require.Error(t, err)
 }
 
@@ -341,7 +348,7 @@ func TestGetMemoryStore(t *testing.T) {
 	var registerCalled = 0
 
 	config := fmt.Sprintf(`{"storage": {"backend": "%s"}}`, notary.MemoryBackend)
-	store, err := getStore(configure(config), fakeRegisterer(&registerCalled), false)
+	store, err := getStore(configure(config),nil, nil, fakeRegisterer(&registerCalled))
 	require.NoError(t, err)
 	_, ok := store.(*storage.MemStorage)
 	require.True(t, ok)
@@ -407,7 +414,7 @@ func TestGetGUNPRefixes(t *testing.T) {
 // For sanity, make sure we can always parse the sample config
 func TestSampleConfig(t *testing.T) {
 	var registerCalled = 0
-	_, _, err := parseServerConfig("../../fixtures/server-config.json", fakeRegisterer(&registerCalled), false)
+	_, _, err := parseServerConfig("../../fixtures/server-config.json")
 	require.NoError(t, err)
 
 	// once for the DB, once for the trust service

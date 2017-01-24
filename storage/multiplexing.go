@@ -87,6 +87,13 @@ func (st *MultiplexingStore) GetChecksum(gun, role, checksum string) (*time.Time
 	return st.signerRootMetaStore.GetChecksum(gun, role, checksum)
 }
 
+// GetVersion returns the create/update date and metadata for a given role, under a GUN.
+func (st *MultiplexingStore) GetVersion(gun, tufRole string, version int) (created *time.Time, data []byte, err error) {
+	st.lock.Lock()
+	defer st.lock.Unlock()
+	return st.signerRootMetaStore.GetVersion(gun, tufRole, version)
+}
+
 // Delete deletes all the metadata for a given GUN
 func (st *MultiplexingStore) Delete(gun string) error {
 	st.lock.Lock()

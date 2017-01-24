@@ -5,8 +5,11 @@ services:
       context: .
       dockerfile: server.Dockerfile
     networks:
-      - mdb
-      - srv
+      mdb:
+      sig:
+      srv:
+        aliases:
+          - apostille
     ports:
       - "8080"
       - "4443:4443"
@@ -16,6 +19,7 @@ services:
       MIGRATIONS_PATH: migrations/postgresql
       DB_URL: postgres://server@postgresql:5432/apostille?sslmode=disable
     depends_on:
+      - signer
       - postgresql
   postgresql:
     image: postgres:9.5.4
@@ -34,6 +38,22 @@ services:
     networks:
       - mdb
       - srv
+  signer:
+    build:
+      context: vendor/github.com/docker/notary
+      dockerfile: signer.Dockerfile
+    networks:
+      mdb:
+      sig:
+        aliases:
+          - notarysigner
+    entrypoint: /usr/bin/env sh
+    environment:
+      MIGRATIONS_PATH: migrations/signer/postgresql
+      DB_URL: postgres://signer@postgresql:5432/notarysigner?sslmode=disable
+    command: -c "./migrations/migrate.sh && notary-signer -config=fixtures/signer-config.postgres.json"
+    depends_on:
+      - postgresql
 volumes:
   apostille_data:
     external: false
@@ -41,4 +61,6 @@ networks:
   mdb:
     external: false
   srv:
+    external: false
+  sig:
     external: false

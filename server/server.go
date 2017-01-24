@@ -21,6 +21,7 @@ import (
 	"github.com/docker/notary"
 	"github.com/docker/notary/server/errors"
 	"github.com/docker/notary/server/handlers"
+	"github.com/docker/notary/tuf"
 )
 
 // Config tells Run how to configure a server
@@ -33,6 +34,7 @@ type Config struct {
 	RepoPrefixes                 []string
 	ConsistentCacheControlConfig utils.CacheControlConfig
 	CurrentCacheControlConfig    utils.CacheControlConfig
+	QuayRootRepo		     *tuf.Repo
 }
 
 // Run sets up and starts a TLS server that can be cancelled using the
@@ -65,8 +67,11 @@ func Run(ctx context.Context, conf Config) error {
 		if err != nil {
 			return err
 		}
+	} else if conf.AuthMethod == "testing" {
+		logrus.Warn("Test Auth config enabled - all requests will be authorized as user 'test_user'")
+		ac = auth.NewTestingAccessController("test_user")
 	} else {
-		logrus.Warn("No Auth config supplied - all requests will be authorized")
+		return fmt.Errorf("No auth config supplied - use 'testing' if mock auth is desired")
 	}
 
 	svr := http.Server{
@@ -92,7 +97,7 @@ func GetMetadataHandler(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	if userInfo, ok := ctx.Value("auth.user").(registryAuth.UserInfo); ok {
 		username = storage.Username(userInfo.Name)
 	}
-	gun := storage.GUN(vars["imageName"])
+	gun := storage.GUN(vars["gun"])
 	s := ctx.Value(notary.CtxKeyMetaStore)
 	logger := ctxutil.GetLoggerWithFields(ctx, map[interface{}]interface{}{
 		"gun":      gun,
@@ -127,7 +132,7 @@ func UserScopedAtomicUpdateHandler(ctx context.Context, w http.ResponseWriter, r
 	if userInfo, ok := ctx.Value("auth.user").(registryAuth.UserInfo); ok {
 		username = storage.Username(userInfo.Name)
 	}
-	gun := storage.GUN(vars["imageName"])
+	gun := storage.GUN(vars["gun"])
 
 	s := ctx.Value(notary.CtxKeyMetaStore)
 	logger := ctxutil.GetLoggerWithField(ctx, gun, "gun")
@@ -141,7 +146,9 @@ func UserScopedAtomicUpdateHandler(ctx context.Context, w http.ResponseWriter, r
 	// User must have push access to get here, so we know the user is a signer
 	if !store.IsSigner(username, gun) {
 		logger.Infof("Adding %s as a signer for %s", username, gun)
-		store.AddUserAsSigner(username, gun)
+		if err := store.AddUserAsSigner(username, gun); err != nil {
+			logger.Error("Unable to add %s as a signer for %s: %v", username, gun, err)
+		}
 	}
 
 	return handlers.AtomicUpdateHandler(ctx, w, r)
@@ -166,7 +173,7 @@ func TrustMultiplexerHandler(ac registryAuth.AccessController, ctx context.Conte
 	notFoundError := errors.ErrMetadataNotFound.WithDetail(nil)
 
 	// Intercept POST requests to record which user created the TUF repo
-	r.Methods("POST").Path("/v2/{imageName:.*}/_trust/tuf/").Handler(notaryServer.CreateHandler(notaryServer.ServerEndpoint{
+	r.Methods("POST").Path("/v2/{gun:.*}/_trust/tuf/").Handler(notaryServer.CreateHandler(notaryServer.EndpointConfig{
 		OperationName:       "UpdateTUF",
 		ErrorIfGUNInvalid:   errors.ErrMetadataNotFound.WithDetail(nil),
 		ServerHandler:       UserScopedAtomicUpdateHandler,
@@ -176,7 +183,7 @@ func TrustMultiplexerHandler(ac registryAuth.AccessController, ctx context.Conte
 	}))
 
 	// Intercept GET requests for TUF metadata, so we can serve different roots based on username
-	r.Methods("GET").Path("/v2/{imageName:[^*]+}/_trust/tuf/{tufRole:root|targets(?:/[^/\\s]+)*|snapshot|timestamp}.{checksum:[a-fA-F0-9]{64}|[a-fA-F0-9]{96}|[a-fA-F0-9]{128}}.json").Handler(notaryServer.CreateHandler(notaryServer.ServerEndpoint{
+	r.Methods("GET").Path("/v2/{gun:[^*]+}/_trust/tuf/{tufRole:root|targets(?:/[^/\\s]+)*|snapshot|timestamp}.{checksum:[a-fA-F0-9]{64}|[a-fA-F0-9]{96}|[a-fA-F0-9]{128}}.json").Handler(notaryServer.CreateHandler(notaryServer.EndpointConfig{
 		OperationName:       "GetRoleByHash",
 		ErrorIfGUNInvalid:   notFoundError,
 		IncludeCacheHeaders: true,
@@ -186,7 +193,7 @@ func TrustMultiplexerHandler(ac registryAuth.AccessController, ctx context.Conte
 		AuthWrapper:         authWrapper,
 		RepoPrefixes:        repoPrefixes,
 	}))
-	r.Methods("GET").Path("/v2/{imageName:[^*]+}/_trust/tuf/{version:[1-9]*[0-9]+}.{tufRole:root|targets(?:/[^/\\s]+)*|snapshot|timestamp}.json").Handler(notaryServer.CreateHandler(notaryServer.ServerEndpoint{
+	r.Methods("GET").Path("/v2/{gun:[^*]+}/_trust/tuf/{version:[1-9]*[0-9]+}.{tufRole:root|targets(?:/[^/\\s]+)*|snapshot|timestamp}.json").Handler(notaryServer.CreateHandler(notaryServer.EndpointConfig{
 		OperationName:       "GetRoleByVersion",
 		ErrorIfGUNInvalid:   notFoundError,
 		IncludeCacheHeaders: true,
@@ -196,7 +203,7 @@ func TrustMultiplexerHandler(ac registryAuth.AccessController, ctx context.Conte
 		AuthWrapper:         authWrapper,
 		RepoPrefixes:        repoPrefixes,
 	}))
-	r.Methods("GET").Path("/v2/{imageName:[^*]+}/_trust/tuf/{tufRole:root|targets(?:/[^/\\s]+)*|snapshot|timestamp}.json").Handler(notaryServer.CreateHandler(notaryServer.ServerEndpoint{
+	r.Methods("GET").Path("/v2/{gun:[^*]+}/_trust/tuf/{tufRole:root|targets(?:/[^/\\s]+)*|snapshot|timestamp}.json").Handler(notaryServer.CreateHandler(notaryServer.EndpointConfig{
 		OperationName:       "GetRole",
 		ErrorIfGUNInvalid:   notFoundError,
 		IncludeCacheHeaders: true,
