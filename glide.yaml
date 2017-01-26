@@ -1,0 +1,62 @@
+package: github.com/coreos-inc/apostille
+import:
+- package: github.com/Sirupsen/logrus
+  version: ~0.11.0
+- package: github.com/docker/distribution
+  version: 2.5.1
+  subpackages:
+  - context
+  - health
+  - registry/auth
+  - registry/auth/htpasswd
+  - registry/auth/token
+- package: github.com/docker/go-connections
+  version: ~0.2.1
+  subpackages:
+  - tlsconfig
+- package: github.com/docker/libtrust
+- package: github.com/docker/notary
+  version: 38162401a8205928a002e42d0f2d22ef975aa5f4
+  repo: git@github.com:ecordell/notary.git
+  subpackages:
+  - cryptoservice
+  - server
+  - server/errors
+  - server/handlers
+  - server/storage
+  - signer/client
+  - tuf
+  - tuf/data
+  - tuf/signed
+  - tuf/utils
+  - utils
+- package: github.com/go-sql-driver/mysql
+  version: ~1.3.0
+- package: github.com/gorilla/mux
+  version: ~1.3.0
+- package: github.com/jinzhu/gorm
+  version: ~1.0.0
+- package: github.com/lib/pq
+- package: github.com/spf13/viper
+- package: golang.org/x/net
+  subpackages:
+  - context
+- package: google.golang.org/grpc
+  version: 0032a855ba5c8a3c8e0d71c2deef354b70af1584
+- package: github.com/golang/protobuf
+  version: c3cefd437628a0b7d31b34fe44b3a7a540e98527
+testImport:
+- package: github.com/mattn/go-sqlite3
+  version: ~1.2.0
+- package: github.com/stretchr/testify
+  version: ~1.1.4
+  subpackages:
+  - require
+- package: github.com/surullabs/lint
+  subpackages:
+  - dupl
+  - gofmt
+  - golint
+  - gosimple
+  - gostaticcheck
+  - govet

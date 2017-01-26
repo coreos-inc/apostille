@@ -6,10 +6,10 @@
 		"type": "remote",
 		"hostname": "notarysigner",
 		"port": "7899",
-		"tls_ca_file": "./test_certs/root-ca.crt",
+		"tls_ca_file": "./vendor/github.com/docker/notary/fixtures/root-ca.crt",
 		"key_algorithm": "ecdsa",
-		"tls_client_cert": "./test_certs/notary-server.crt",
-		"tls_client_key": "./test_certs/notary-server.key"
+		"tls_client_cert": "./vendor/github.com/docker/notary/fixtures/notary-server.crt",
+		"tls_client_key": "./vendor/github.com/docker/notary/fixtures/notary-server.key"
 	},
 	"logging": {
 		"level": "debug"

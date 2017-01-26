@@ -13,7 +13,7 @@ services:
     entrypoint: /usr/bin/env sh
     command: -c "./migrations/migrate.sh && apostille -config=fixtures/config.mysql.json"
     depends_on:
-      - signer
+      - notary_signer
       - mysql
   mysql:
     networks:
@@ -36,18 +36,21 @@ services:
     networks:
       - mdb
       - srv
-  signer:
+  notary_signer:
     build:
-      context: vendor/github.com/docker/notary
+      context: .
       dockerfile: signer.Dockerfile
     networks:
+      mdb:
       sig:
         aliases:
           - notarysigner
     entrypoint: /usr/bin/env sh
     environment:
-      - GOPATH=/go/src/vendor
-    command: -c "./migrations/migrate.sh && notary-signer -config=fixtures/signer-config.json"
+      GOPATH: /go/src
+      MIGRATIONS_PATH: /go/src/github.com/docker/notary/migrations/signer/mysql
+      DB_URL: mysql://signer@tcp(mysql:3306)/notarysigner
+    command: -c "/go/src/github.com/docker/notary/migrations/migrate.sh && notary-signer -config=/go/src/github.com/docker/notary/fixtures/signer-config.json"
     depends_on:
       - mysql
 networks:

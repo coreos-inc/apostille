@@ -19,7 +19,7 @@ services:
       MIGRATIONS_PATH: migrations/postgresql
       DB_URL: postgres://server@postgresql:5432/apostille?sslmode=disable
     depends_on:
-      - signer
+      - notary_signer
       - postgresql
   postgresql:
     image: postgres:9.5.4
@@ -38,9 +38,9 @@ services:
     networks:
       - mdb
       - srv
-  signer:
+  notary_signer:
     build:
-      context: vendor/github.com/docker/notary
+      context: .
       dockerfile: signer.Dockerfile
     networks:
       mdb:
@@ -49,9 +49,10 @@ services:
           - notarysigner
     entrypoint: /usr/bin/env sh
     environment:
-      MIGRATIONS_PATH: migrations/signer/postgresql
+      GOPATH: /go/src
+      MIGRATIONS_PATH: /go/src/github.com/docker/notary/migrations/signer/postgresql
       DB_URL: postgres://signer@postgresql:5432/notarysigner?sslmode=disable
-    command: -c "./migrations/migrate.sh && notary-signer -config=fixtures/signer-config.postgres.json"
+    command: -c "/go/src/github.com/docker/notary/migrations/migrate.sh && notary-signer -config=/go/src/github.com/docker/notary/fixtures/signer-config.postgres.json"
     depends_on:
       - postgresql
 volumes:
