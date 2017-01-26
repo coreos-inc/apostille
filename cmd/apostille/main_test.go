@@ -22,17 +22,31 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"github.com/surullabs/lint"
+	"github.com/surullabs/lint/gofmt"
+	"github.com/surullabs/lint/govet"
+	"github.com/surullabs/lint/golint"
+	"github.com/surullabs/lint/dupl"
+	"github.com/surullabs/lint/gosimple"
+	"github.com/surullabs/lint/gostaticcheck"
 )
 
 const (
-	Cert = "../../fixtures/notary-server.crt"
-	Key  = "../../fixtures/notary-server.key"
-	Root = "../../fixtures/root-ca.crt"
+	Cert = "../../vendor/github.com/docker/notary/fixtures/notary-server.crt"
+	Key  = "../../vendor/github.com/docker/notary/fixtures/notary-server.key"
+	Root = "../../vendor/github.com/docker/notary/fixtures/root-ca.crt"
 )
 
 
 func TestLint(t *testing.T) {
-	if err := lint.Default.Check("./..."); err != nil {
+	custom := lint.Group{
+		gofmt.Check{},             // Enforce gofmt usage
+		govet.Check{},             // Use govet without -shadow
+		golint.Check{},            // Enforce Google Go style guide
+		dupl.Check{Threshold: 25}, // Identify duplicates
+		gosimple.Check{},          // Simplification suggestions
+		gostaticcheck.Check{},     // Verify function parameters
+	}
+	if err := custom.Check("../..."); err != nil {
 		t.Fatal("lint failures: %v", err)
 	}
 }

@@ -163,7 +163,6 @@ func getNotarySigner(hostname, port string, tlsConfig *tls.Config) (*client.Nota
 			}
 		}
 	}
-	return nil, fmt.Errorf("unable to contact signer: %s:%s", hostname, port)
 }
 
 // getTrustService parses the configuration and determines which trust service and
@@ -271,7 +270,7 @@ func loadQuayRoot(cs signed.CryptoService) (*tuf.Repo, error) {
 	}
 	x509PublicKey := tufUtils.CertToKey(cert)
 	if x509PublicKey == nil {
-		return nil, fmt.Errorf("cannot use regenerated certificate: format %s", cert.PublicKeyAlgorithm)
+		return nil, fmt.Errorf("cannot use regenerated certificate: format %v", cert.PublicKeyAlgorithm)
 	}
 
 	// Generate root role
@@ -317,13 +316,13 @@ func loadQuayRoot(cs signed.CryptoService) (*tuf.Repo, error) {
 		return nil, err
 	}
 
-	if _, err := repo.InitTargets(data.CanonicalTargetsRole); err != nil {
+	if _, err = repo.InitTargets(data.CanonicalTargetsRole); err != nil {
 		return nil, err
 	}
-	if err := repo.InitSnapshot(); err != nil {
+	if err = repo.InitSnapshot(); err != nil {
 		return nil, err
 	}
-	if err := repo.InitTimestamp(); err != nil {
+	if err = repo.InitTimestamp(); err != nil {
 		return nil, err
 	}
 
