@@ -1,5 +1,5 @@
-hash: b9f81fdf43b2b39c82ca89cf23a5c94ce7f2b35749e39d520417789a9105f01d
-updated: 2017-01-24T11:55:18.172409615-05:00
+hash: 00d600da6773016f1625ba64e43cc51c1ad084fbe307dcc4ffc2f2cb04ebf14d
+updated: 2017-01-30T11:04:36.648596244-05:00
 imports:
 - name: github.com/agl/ed25519
   version: 278e1ec8e8a6e017cd07577924d6766039146ced
@@ -21,6 +21,10 @@ imports:
   version: bd2bdf7f18f849530ef7a1c29a4290217cab32a1
 - name: github.com/cenk/backoff
   version: b02f2bbce11d7ea6b97f282ef1771b0fe2f65ef3
+- name: github.com/davecgh/go-spew
+  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
+  subpackages:
+  - spew
 - name: github.com/docker/distribution
   version: 12acdf0a6c1e56d965ac6eb395d2bce687bf22fc
   subpackages:
@@ -29,6 +33,7 @@ imports:
   - registry/api/errcode
   - registry/auth
   - registry/auth/htpasswd
+  - registry/auth/silly
   - registry/auth/token
   - uuid
 - name: github.com/docker/go
@@ -46,6 +51,7 @@ imports:
   repo: git@github.com:ecordell/notary.git
   subpackages:
   - cryptoservice
+  - passphrase
   - proto
   - server
   - server/errors
@@ -53,6 +59,8 @@ imports:
   - server/snapshot
   - server/storage
   - server/timestamp
+  - signer
+  - signer/api
   - signer/client
   - storage
   - storage/rethinkdb
@@ -61,6 +69,7 @@ imports:
   - tuf
   - tuf/data
   - tuf/signed
+  - tuf/testutils
   - tuf/utils
   - tuf/validation
   - utils
@@ -96,6 +105,10 @@ imports:
   - pbutil
 - name: github.com/mitchellh/mapstructure
   version: 482a9fd5fa83e8c4e7817413b80f3eb8feec03ef
+- name: github.com/pmezard/go-difflib
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  subpackages:
+  - difflib
 - name: github.com/prometheus/client_golang
   version: 449ccefff16c8e2b7229f6be1921ba22f62461fe
   subpackages:
@@ -124,6 +137,11 @@ imports:
   version: 5644820622454e71517561946e3d94b9f9db6842
 - name: github.com/spf13/viper
   version: be5ff3e4840cf692388bde7a057595a474ef379e
+- name: github.com/stretchr/testify
+  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
+  subpackages:
+  - assert
+  - require
 - name: golang.org/x/crypto
   version: c10c31b5e94b6f7a0283272dc2bb27163dcea24b
   subpackages:
@@ -131,6 +149,7 @@ imports:
   - blowfish
   - ocsp
   - pbkdf2
+  - ssh/terminal
 - name: golang.org/x/net
   version: 4876518f9e71663000c348837735820161a42df7
   subpackages:
@@ -168,21 +187,8 @@ imports:
 - name: gopkg.in/yaml.v2
   version: bef53efd0c76e49e6de55ead051f886bea7e9420
 testImports:
-- name: github.com/davecgh/go-spew
-  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
-  subpackages:
-  - spew
 - name: github.com/mattn/go-sqlite3
   version: ca5e3819723d8eeaf170ad510e7da1d6d2e94a08
-- name: github.com/pmezard/go-difflib
-  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
-  subpackages:
-  - difflib
-- name: github.com/stretchr/testify
-  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
-  subpackages:
-  - assert
-  - require
 - name: github.com/surullabs/lint
   version: c4617fc3d763f6eb95305033f1b7e723730d3ff7
   subpackages:

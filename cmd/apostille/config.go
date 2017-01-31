@@ -99,8 +99,11 @@ func getStore(configuration *viper.Viper, trust signed.CryptoService, rootRepo *
 	switch backend {
 	case notary.MemoryBackend:
 		signerStore = storage.NewSignerMemoryStore()
+		logrus.Info(signerStore)
 		store = notaryStorage.NewMemStorage()
+		logrus.Info(store)
 		alternateRootStore = storage.NewAlternateRootMemStorage(trust, *rootRepo, store)
+		logrus.Info(alternateRootStore)
 	case notary.MySQLBackend, notary.SQLiteBackend, notary.PostgresBackend:
 		storeConfig, err := utils.ParseSQLStorage(configuration)
 		if err != nil {
@@ -184,6 +187,11 @@ func getTrustService(configuration *viper.Viper, sFactory signerFactory,
 			`must specify either a "local" or "remote" type for trust_service`)
 	}
 
+	keyAlgo := configuration.GetString("trust_service.key_algorithm")
+	if keyAlgo != data.ED25519Key && keyAlgo != data.ECDSAKey && keyAlgo != data.RSAKey {
+		return nil, "", fmt.Errorf("invalid key algorithm configured: %s", keyAlgo)
+	}
+
 	clientTLS, err := grpcTLS(configuration)
 	if err != nil {
 		return nil, "", err
@@ -213,7 +221,7 @@ func getTrustService(configuration *viper.Viper, sFactory signerFactory,
 			return err
 		},
 	)
-	return notarySigner, data.ED25519Key, nil
+	return notarySigner, keyAlgo, nil
 }
 
 // getCacheConfig parses the cache configurations for GET-ting current and checksummed metadata,

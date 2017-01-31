@@ -7,14 +7,14 @@ import (
 )
 
 // testingAccessController implements the auth.AccessController interface.
-type testingAccessController struct {
+type TestingAccessController struct {
 	Username     string
 	Allow        bool
 }
 
 // NewTestingAccessController creates a testingAccessController, only for use in tests
 func NewTestingAccessController(username string) registryAuth.AccessController {
-	return &testingAccessController{
+	return &TestingAccessController{
 		Username:   username,
 		Allow:      true,      // by default, all requests are authorized
 	}
@@ -22,7 +22,7 @@ func NewTestingAccessController(username string) registryAuth.AccessController {
 
 // Authorized handles checking whether the given request is authorized
 // for actions on resources described by the given access items.
-func (ac *testingAccessController) Authorized(ctx context.Context, accessItems ...registryAuth.Access) (context.Context, error) {
+func (ac *TestingAccessController) Authorized(ctx context.Context, accessItems ...registryAuth.Access) (context.Context, error) {
 	challenge := &authChallenge{
 		realm:     "testing",
 		service:   "testing",

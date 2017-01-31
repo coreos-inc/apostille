@@ -60,6 +60,7 @@ clean:
 test:
 	@echo "+ $@"
 	@go test ./cmd/apostille
+	@go test ./server
 
 integration:
 	@echo "+ $@"

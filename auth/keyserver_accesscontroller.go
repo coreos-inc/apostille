@@ -23,7 +23,7 @@ type keyserverAccessController struct {
 }
 
 // tokenAccessOptions is a convenience type for handling
-// options to the contstructor of a keyserverAccessController.
+// options to the constructor of a keyserverAccessController.
 type tokenAccessOptions struct {
 	realm     string
 	issuer    string
