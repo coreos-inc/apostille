@@ -19,6 +19,7 @@ APOSTILLE_BUILDTAGS ?= pkcs11
 APOSTILLEDIR := /go/src/github.com/docker/apostille
 
 GO_VERSION := $(shell go version | grep "1\.[7-9]\(\.[0-9]+\)*\|devel")
+INTEGRATION_PATH=integration/integration.sh
 
 # check to make sure we have the right version. development versions of Go are
 # not officially supported, but allowed for building
@@ -64,10 +65,10 @@ test:
 
 integration:
 	@echo "+ $@"
-	test/integration.sh mysql
+	$INTEGRATION_PATH mysql
 
 integration-postgres:
 	@echo "+ $@"
-	test/integration.sh postgresql
+	$INTEGRATION_PATH postgresql
 
 test-all: test integration integration-postgres

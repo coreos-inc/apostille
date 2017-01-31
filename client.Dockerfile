@@ -24,7 +24,7 @@ RUN go get github.com/docker/notary
 
 ENV NOTARYDIR /go/src/github.com/docker/notary
 
-COPY test/ ${NOTARYDIR}
+COPY integration/ ${NOTARYDIR}
 
 RUN chmod -R a+rw /go
 
