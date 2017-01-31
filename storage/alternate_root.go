@@ -3,16 +3,11 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
-	"time"
-
 	"github.com/Sirupsen/logrus"
-	"github.com/docker/notary"
-	"github.com/docker/notary/cryptoservice"
 	notaryStorage "github.com/docker/notary/server/storage"
 	"github.com/docker/notary/tuf"
 	"github.com/docker/notary/tuf/data"
 	"github.com/docker/notary/tuf/signed"
-	tufUtils "github.com/docker/notary/tuf/utils"
 )
 
 // Username represents a username string
@@ -168,43 +163,6 @@ func (st *AlternateRootStore) swizzleTargets(gun string, updates []notaryStorage
 		return nil, err
 	}
 	repo.Targets["targets/releases"] = signedReleases
-
-	//// TODO: REMOVE AS SOON AS POSSIBLE
-	if oldMetadataIdx[data.CanonicalRootRole] > -1 {
-		rootRole, err := repo.GetBaseRole(data.CanonicalRootRole)
-		if err != nil {
-			return nil, err
-		}
-		publicCerts := []data.PublicKey{}
-		for _, rootPublicKey := range rootRole.ListKeys() {
-			rootKeyID, err := tufUtils.CanonicalKeyID(rootPublicKey)
-			if err != nil {
-				return nil, err
-			}
-			rootKey, _, err := st.cryptoService.GetPrivateKey(rootKeyID)
-			if err != nil {
-				return nil, err
-			}
-
-			startTime := time.Now()
-			cert, err := cryptoservice.GenerateCertificate(rootKey, gun, startTime, startTime.Add(notary.Year*10))
-			if err != nil {
-				return nil, err
-			}
-			x509PublicKey := tufUtils.CertToKey(cert)
-			if x509PublicKey == nil {
-				return nil, fmt.Errorf("cannot use regenerated certificate: format %s", cert.PublicKeyAlgorithm)
-			}
-			publicCerts = append(publicCerts, x509PublicKey)
-		}
-		if err = repo.ReplaceBaseKeys(data.CanonicalRootRole, publicCerts...); err != nil {
-			return nil, err
-		}
-		if _, err = repo.SignRoot(data.DefaultExpires(data.CanonicalRootRole), nil); err != nil {
-			return nil, err
-		}
-	}
-	//////////////////////////////////////
 
 	// resign targets, snapshot, and timestamp - the signer has all of these keys
 	if _, err = repo.SignTargets(data.CanonicalTargetsRole, data.DefaultExpires(data.CanonicalTimestampRole)); err != nil {

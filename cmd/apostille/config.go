@@ -180,7 +180,7 @@ func getTrustService(configuration *viper.Viper, sFactory signerFactory,
 		return signed.NewEd25519(), data.ED25519Key, nil
 
 	case "remote":
-		// continue with remote configuration below
+	// continue with remote configuration below
 
 	default:
 		return nil, "", fmt.Errorf(
@@ -258,8 +258,8 @@ func getCacheConfig(configuration *viper.Viper) (current, consistent utils.Cache
 	return
 }
 
-func loadQuayRoot(cs signed.CryptoService) (*tuf.Repo, error) {
-	gun := "quay.io-root"
+func generateQuayRoot(cs signed.CryptoService) (*tuf.Repo, error) {
+	gun := "quay.io/*"
 
 	rootPublicKey, err := cs.Create(data.CanonicalRootRole, gun, data.ECDSAKey)
 	if err != nil {
@@ -384,7 +384,7 @@ func parseServerConfig(configFilePath string) (context.Context, server.Config, e
 	}
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, keyAlgo)
 
-	repo, err := loadQuayRoot(trust)
+	repo, err := generateQuayRoot(trust)
 	if err != nil {
 		return nil, server.Config{}, err
 	}
