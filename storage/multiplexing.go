@@ -30,7 +30,7 @@ func NewMultiplexingStore(store notaryStorage.MetaStore, alternateRootStore nota
 	return &MultiplexingStore{
 		signerRootMetaStore:    store,
 		alternateRootMetaStore: alternateRootStore,
-		SignerStore: signerStore,
+		SignerStore:            signerStore,
 	}
 }
 

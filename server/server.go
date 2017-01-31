@@ -34,7 +34,7 @@ type Config struct {
 	RepoPrefixes                 []string
 	ConsistentCacheControlConfig utils.CacheControlConfig
 	CurrentCacheControlConfig    utils.CacheControlConfig
-	QuayRootRepo		     *tuf.Repo
+	QuayRootRepo                 *tuf.Repo
 }
 
 // Run sets up and starts a TLS server that can be cancelled using the

@@ -57,12 +57,8 @@ func NewKeyserverAccessController(options map[string]interface{}) (registryAuth.
 	if err != nil {
 		return nil, err
 	}
-	return &keyserverAccessController{
-		realm:     config.realm,
-		issuer:    config.issuer,
-		service:   config.service,
-		keyserver: config.keyserver,
-	}, nil
+	accessController := keyserverAccessController(config)
+	return &accessController, nil
 }
 
 // Authorized handles checking whether the given request is authorized
