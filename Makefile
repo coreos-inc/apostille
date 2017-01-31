@@ -65,10 +65,10 @@ test:
 
 integration:
 	@echo "+ $@"
-	$INTEGRATION_PATH mysql
+	$(INTEGRATION_PATH) mysql
 
 integration-postgres:
 	@echo "+ $@"
-	$INTEGRATION_PATH postgresql
+	$(INTEGRATION_PATH) postgresql
 
 test-all: test integration integration-postgres
