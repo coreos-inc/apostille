@@ -1,11 +1,11 @@
 package storage
 
 import (
-	notaryStorage "github.com/docker/notary/server/storage"
-	"time"
 	"fmt"
-	"github.com/jinzhu/gorm"
 	"github.com/Sirupsen/logrus"
+	notaryStorage "github.com/docker/notary/server/storage"
+	"github.com/jinzhu/gorm"
+	"time"
 )
 
 var SignerTableName = func() string {
@@ -15,8 +15,8 @@ var SignerTableName = func() string {
 // Signers maps a signing user to a gun
 type Signer struct {
 	gorm.Model
-	Gun     string	  `sql:"type:varchar(255);not null"`
-	Signer  string    `sql:"type:varchar(255);not null"`
+	Gun    string `sql:"type:varchar(255);not null"`
+	Signer string `sql:"type:varchar(255);not null"`
 }
 
 // TableName sets a specific table name for TUFFile
@@ -30,7 +30,7 @@ type SignerSQLStorage struct {
 }
 
 // NewSignerSQLStorage stores signer data in an existing DB
-func NewSignerSQLStorage(gormDB gorm.DB) (*SignerSQLStorage) {
+func NewSignerSQLStorage(gormDB gorm.DB) *SignerSQLStorage {
 	return &SignerSQLStorage{
 		DB: gormDB,
 	}
@@ -68,7 +68,7 @@ func (db *SignerSQLStorage) IsSigner(user Username, gun GUN) bool {
 // See server/storage/sqldb.go
 type NamespacedSQLStorage struct {
 	notaryStorage.SQLStorage
-	tufFileTableNameFunc func() string
+	tufFileTableNameFunc    func() string
 	changefeedTableNameFunc func() string
 }
 
@@ -107,7 +107,6 @@ func (db *NamespacedSQLStorage) UpdateMany(gun string, updates []notaryStorage.M
 	return db.SQLStorage.UpdateMany(gun, updates)
 }
 
-
 // GetCurrent gets a specific TUF record
 func (db *NamespacedSQLStorage) GetCurrent(gun, tufRole string) (*time.Time, []byte, error) {
 	notaryStorage.TUFFileTableName = db.tufFileTableNameFunc
@@ -143,4 +142,3 @@ func (db *NamespacedSQLStorage) GetChanges(changeID string, records int, filterN
 	notaryStorage.ChangefeedTableName = db.changefeedTableNameFunc
 	return db.SQLStorage.GetChanges(changeID, records, filterName)
 }
-

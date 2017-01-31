@@ -1,24 +1,24 @@
 package test
 
 import (
-	"github.com/stretchr/testify/require"
-	"os"
-	"github.com/docker/notary/trustmanager"
+	"github.com/docker/notary"
 	"github.com/docker/notary/cryptoservice"
+	pb "github.com/docker/notary/proto"
 	"github.com/docker/notary/signer"
+	"github.com/docker/notary/signer/api"
+	"github.com/docker/notary/signer/client"
+	"github.com/docker/notary/trustmanager"
+	"github.com/docker/notary/tuf"
 	"github.com/docker/notary/tuf/data"
 	"github.com/docker/notary/tuf/signed"
-	"github.com/docker/notary/tuf"
-	"github.com/docker/notary"
-	"time"
-	"net"
-	"testing"
-	"google.golang.org/grpc"
-	"github.com/docker/notary/signer/client"
-	"io/ioutil"
-	pb "github.com/docker/notary/proto"
-	"github.com/docker/notary/signer/api"
 	tufUtils "github.com/docker/notary/tuf/utils"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"io/ioutil"
+	"net"
+	"os"
+	"testing"
+	"time"
 )
 
 var constPass = func(string, string, bool, int) (string, bool, error) {

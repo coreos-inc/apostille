@@ -6,4 +6,3 @@ type SignerStore interface {
 	RemoveUserAsSigner(user Username, gun GUN) error
 	IsSigner(user Username, gun GUN) bool
 }
-

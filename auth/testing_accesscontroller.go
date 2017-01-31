@@ -8,15 +8,15 @@ import (
 
 // testingAccessController implements the auth.AccessController interface.
 type TestingAccessController struct {
-	Username     string
-	Allow        bool
+	Username string
+	Allow    bool
 }
 
 // NewTestingAccessController creates a testingAccessController, only for use in tests
 func NewTestingAccessController(username string) registryAuth.AccessController {
 	return &TestingAccessController{
-		Username:   username,
-		Allow:      true,      // by default, all requests are authorized
+		Username: username,
+		Allow:    true, // by default, all requests are authorized
 	}
 }
 
@@ -36,4 +36,3 @@ func (ac *TestingAccessController) Authorized(ctx context.Context, accessItems .
 
 	return registryAuth.WithUser(ctx, registryAuth.UserInfo{Name: ac.Username}), nil
 }
-

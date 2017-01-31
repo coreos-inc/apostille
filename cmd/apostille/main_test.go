@@ -5,13 +5,14 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
-	"net"
 
+	"github.com/coreos-inc/apostille/storage"
 	"github.com/docker/distribution/health"
 	"github.com/docker/notary"
 	"github.com/docker/notary/cryptoservice"
@@ -36,7 +37,6 @@ import (
 	"github.com/surullabs/lint/gostaticcheck"
 	"github.com/surullabs/lint/govet"
 	"google.golang.org/grpc"
-	"github.com/coreos-inc/apostille/storage"
 )
 
 const (
@@ -126,9 +126,7 @@ func testTrustService(t *testing.T) (signed.CryptoService, error) {
 		Cert, Key)
 
 	var trustRegisterCalled = 0
-	var tlsConfig *tls.Config
 	var fakeNewSigner = func(_, _ string, c *tls.Config) (*client.NotarySigner, error) {
-		tlsConfig = c
 		memStore := trustmanager.NewKeyMemoryStore(constPass)
 		signerClient, _, _ := setUpSignerClient(t, setUpSignerServer(memStore))
 		return signerClient, nil
@@ -533,7 +531,7 @@ func TestGetMemoryStore(t *testing.T) {
 	require.NoError(t, err)
 
 	config := fmt.Sprintf(`{"storage": {"backend": "%s"}}`, notary.MemoryBackend)
-	store, err := getStore(configure(config),trust, repo, fakeRegisterer(&registerCalled))
+	store, err := getStore(configure(config), trust, repo, fakeRegisterer(&registerCalled))
 	require.NoError(t, err)
 	_, ok := store.(*storage.MultiplexingStore)
 	require.True(t, ok)
