@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"encoding/json"
+	"sync"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/distribution/context"
@@ -16,19 +18,27 @@ import (
 
 // keyserverAccessController implements the auth.AccessController interface.
 type keyserverAccessController struct {
-	realm     string
-	issuer    string
-	service   string
-	keyserver string
+	realm             string
+	issuer            string
+	service           string
+	keyserver         string
+	updateKeyInterval time.Duration
+	keysLock          sync.RWMutex
+	keys              map[string]libtrust.PublicKey
 }
 
 // tokenAccessOptions is a convenience type for handling
 // options to the constructor of a keyserverAccessController.
 type tokenAccessOptions struct {
-	realm     string
-	issuer    string
-	service   string
-	keyserver string
+	realm             string
+	issuer            string
+	service           string
+	keyserver         string
+	updateKeyInterval time.Duration
+}
+
+type Keys struct {
+	Keys []json.RawMessage `json:"key"`
 }
 
 // checkOptions gathers the necessary options
@@ -36,7 +46,7 @@ type tokenAccessOptions struct {
 func checkOptions(options map[string]interface{}) (tokenAccessOptions, error) {
 	var opts tokenAccessOptions
 
-	keys := []string{"realm", "issuer", "service", "keyserver"}
+	keys := []string{"realm", "issuer", "service", "keyserver", "updateKeyInterval"}
 	vals := make([]string, 0, len(keys))
 	for _, key := range keys {
 		val, ok := options[key].(string)
@@ -46,8 +56,14 @@ func checkOptions(options map[string]interface{}) (tokenAccessOptions, error) {
 		vals = append(vals, val)
 	}
 
-	opts.realm, opts.issuer, opts.service, opts.keyserver = vals[0], vals[1], vals[2], vals[3]
+	val, err := time.ParseDuration(vals[4])
+	if err != nil {
+		return opts, fmt.Errorf("invalid duration specified for key refresh interval: %s",
+			err.Error())
+	}
 
+	opts.realm, opts.issuer, opts.service, opts.keyserver = vals[0], vals[1], vals[2], vals[3]
+	opts.updateKeyInterval = val
 	return opts, nil
 }
 
@@ -57,8 +73,24 @@ func NewKeyserverAccessController(options map[string]interface{}) (registryAuth.
 	if err != nil {
 		return nil, err
 	}
-	accessController := keyserverAccessController(config)
-	return &accessController, nil
+	accessController := &keyserverAccessController{
+		realm:             config.realm,
+		issuer:            config.issuer,
+		service:           config.service,
+		keyserver:         config.keyserver,
+		updateKeyInterval: config.updateKeyInterval,
+	}
+	accessController.updateKeys()
+	go func() {
+		for {
+			select {
+			case <-time.After(accessController.updateKeyInterval):
+				logrus.Debug("performing fetch of JWKs")
+				accessController.updateKeys()
+			}
+		}
+	}()
+	return accessController, nil
 }
 
 // Authorized handles checking whether the given request is authorized
@@ -90,24 +122,17 @@ func (ac *keyserverAccessController) Authorized(ctx context.Context, accessItems
 		return nil, challenge
 	}
 
-	url := fmt.Sprintf("%s/services/%s/keys/%s", ac.keyserver, ac.service, token.Header.KeyID)
-	logrus.Infof("fetching jwk from keyserver: %s", url)
-
-	resp, err := http.Get(url)
-	if err != nil {
-		challenge.err = err
-		return nil, challenge
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		challenge.err = err
-		return nil, challenge
+	ac.keysLock.RLock()
+	pubKey, ok := ac.keys[token.Header.KeyID]
+	ac.keysLock.RUnlock()
+	if !ok {
+		pubKey, err = ac.tryFindKey(token.Header.KeyID)
+		if err != nil {
+			challenge.err = err
+			return nil, challenge
+		}
 	}
 
-	// parse into pubKey
-	pubKey, err := libtrust.UnmarshalPublicKeyJWK(body)
 	if err != nil {
 		challenge.err = fmt.Errorf("unable to decode JWK value: %s", err)
 		return nil, challenge
@@ -201,4 +226,61 @@ func AccessSet(token *registryToken.Token) accessSet {
 	}
 
 	return accessSet
+}
+
+func (ac *keyserverAccessController) updateKeys() error {
+	url := fmt.Sprintf("%s/services/%s/keys", ac.keyserver, ac.service)
+	logrus.Infof("fetching jwk from keyserver: %s", url)
+	resp, err := http.Get(url)
+	if err != nil {
+		logrus.Errorln("failed to fetch JWK Set: " + err.Error())
+		return err
+	}
+	defer resp.Body.Close()
+
+	var maybeKeys Keys
+	err = json.NewDecoder(resp.Body).Decode(&maybeKeys)
+	if err != nil {
+		logrus.Errorln("failed to decode JWK JSON: " + err.Error())
+		return err
+	}
+
+	keys := make(map[string]libtrust.PublicKey)
+	for _, maybeKey := range maybeKeys.Keys {
+		pubKey, err := libtrust.UnmarshalPublicKeyJWK(maybeKey)
+		if err != nil {
+			logrus.Errorln("failed to decode JWK into public key: " + err.Error())
+			return err
+		}
+		keys[pubKey.KeyID()] = pubKey
+	}
+
+	ac.keysLock.Lock()
+	ac.keys = keys
+	ac.keysLock.Unlock()
+	logrus.Infof("successfully fetched JWK Set")
+	return nil
+}
+
+func (ac *keyserverAccessController) tryFindKey(keyId string) (libtrust.PublicKey, error) {
+	url := fmt.Sprintf("%s/services/%s/keys/%s", ac.keyserver, ac.service, keyId)
+	logrus.Infof("fetching jwk from keyserver: %s", url)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// parse into pubKey
+	pubKey, err := libtrust.UnmarshalPublicKeyJWK(body)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode JWK value: %s", err)
+	}
+	return pubKey, nil
 }
