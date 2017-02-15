@@ -7,10 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/coreos-inc/apostille/auth"
@@ -39,27 +37,6 @@ func TestRunBadAddr(t *testing.T) {
 		},
 	)
 	require.Error(t, err, "Passed bad addr, Run should have failed")
-}
-
-func TestRunReservedPort(t *testing.T) {
-	ctx, _ := context.WithCancel(context.Background())
-
-	err := Run(
-		ctx,
-		Config{
-			Addr:  "localhost:80",
-			Trust: signed.NewEd25519(),
-		},
-	)
-
-	require.Error(t, err)
-	require.IsType(t, &net.OpError{}, err)
-	require.True(
-		t,
-		strings.Contains(err.Error(), "bind: permission denied"),
-		"Received unexpected err: %s",
-		err.Error(),
-	)
 }
 
 func TestRepoPrefixMatches(t *testing.T) {

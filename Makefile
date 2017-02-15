@@ -60,8 +60,7 @@ clean:
 
 test:
 	@echo "+ $@"
-	@go test ./cmd/apostille
-	@go test ./server
+	@go test `glide novendor`
 
 integration:
 	@echo "+ $@"

@@ -1,0 +1,56 @@
+resource_types:
+  - name: pull-request
+    type: docker-image
+    source:
+      repository: quay.io/quay/pr-resource
+      username: {{quay-robot-username}}
+      password: {{quay-robot-password}}
+
+resources:
+  - name: build-image
+    type: docker-image
+    source:
+      repository: quay.io/quay/apostille-build-image
+      username: {{quay-robot-username}}
+      password: {{quay-robot-password}}
+  - name: apostille-pull-request
+    type: pull-request
+    source:
+      access_token: {{quay-github-token}}
+      private_key: {{quay-git-private-key}}
+      repo: coreos-inc/apostille
+      uri: git@github.com:coreos-inc/apostille.git
+      base: master
+      disable_forks: true
+
+jobs:
+  - name: unit
+    max_in_flight: 4
+    plan:
+      - get: apostille-pull-request
+        trigger: true
+        version: every
+      - put: build-image
+        params: {build: apostille-pull-request}
+      - put: apostille-pull-request
+        params:
+          path: apostille-pull-request
+          context: unit
+          status: pending
+      - get: build-image
+      - task: unit
+        image: build-image
+        file: apostille-pull-request/ci/tasks/unit.yaml
+        on_success:
+          put: apostille-pull-request
+          params:
+            path: apostille-pull-request
+            context: unit
+            status: success
+        on_failure:
+          put: apostille-pull-request
+          params:
+            path: apostille-pull-request
+            context: unit
+            status: failure
+

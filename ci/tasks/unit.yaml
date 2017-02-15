@@ -1,0 +1,10 @@
+---
+platform: linux
+inputs:
+  - name: apostille-pull-request
+run:
+  path: /bin/sh
+  args:
+    - -c
+    - |
+      /usr/bin/make --directory=/go/src/github.com/coreos-inc/apostille test
