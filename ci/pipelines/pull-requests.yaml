@@ -31,13 +31,14 @@ jobs:
         trigger: true
         version: every
       - put: build-image
-        params: {build: apostille-pull-request}
+        params: {build: apostille-pull-request, tag: apostille-pull-request/unit-tag}
       - put: apostille-pull-request
         params:
           path: apostille-pull-request
           context: unit
           status: pending
       - get: build-image
+        params: {tag: "unit"}
       - task: unit
         image: build-image
         file: apostille-pull-request/ci/tasks/unit.yaml
@@ -52,5 +53,68 @@ jobs:
           params:
             path: apostille-pull-request
             context: unit
+            status: failure
+
+  - name: postgres
+    max_in_flight: 4
+    plan:
+      - get: apostille-pull-request
+        trigger: true
+        version: every
+      - put: build-image
+        params: {build: apostille-pull-request, tag: apostille-pull-request/postgres-tag}
+      - put: apostille-pull-request
+        params:
+          path: apostille-pull-request
+          context: postgres
+          status: pending
+      - get: build-image
+        params: {tag: "postgres"}
+      - task: postgres
+        privileged: true
+        image: build-image
+        file: apostille-pull-request/ci/tasks/postgres.yaml
+        on_success:
+          put: apostille-pull-request
+          params:
+            path: apostille-pull-request
+            context: postgres
+            status: success
+        on_failure:
+          put: apostille-pull-request
+          params:
+            path: apostille-pull-request
+            context: postgres
+            status: failure
+  - name: mysql
+    max_in_flight: 4
+    plan:
+      - get: apostille-pull-request
+        trigger: true
+        version: every
+      - put: build-image
+        params: {build: apostille-pull-request, tag: apostille-pull-request/mysql-tag}
+      - put: apostille-pull-request
+        params:
+          path: apostille-pull-request
+          context: mysql
+          status: pending
+      - get: build-image
+        params: {tag: "mysql"}
+      - task: postgres
+        privileged: true
+        image: build-image
+        file: apostille-pull-request/ci/tasks/mysql.yaml
+        on_success:
+          put: apostille-pull-request
+          params:
+            path: apostille-pull-request
+            context: mysql
+            status: success
+        on_failure:
+          put: apostille-pull-request
+          params:
+            path: apostille-pull-request
+            context: mysql
             status: failure
 

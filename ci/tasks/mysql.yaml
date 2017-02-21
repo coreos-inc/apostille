@@ -1,0 +1,13 @@
+---
+platform: linux
+inputs:
+  - name: apostille-pull-request
+run:
+  path: /bin/sh
+  args:
+    - -c
+    - |
+      /usr/local/bin/wrapdocker
+      export PATH=$PATH:/usr/local/go/bin/
+      /usr/bin/make --directory=/go/src/github.com/coreos-inc/apostille integration
+      kill $(cat /var/run/docker.pid)
