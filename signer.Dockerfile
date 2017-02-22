@@ -11,6 +11,5 @@ ENV SERVICE_NAME=notary_signer
 ENV NOTARY_SIGNER_DEFAULT_ALIAS="timestamp_1"
 ENV NOTARY_SIGNER_TIMESTAMP_1="testpassword"
 
-ENTRYPOINT "notary-signer"
-
-CMD [ "-config=/go/src/github.com/docker/notary/fixtures/signer-config.json" ]
+ENTRYPOINT [ "/bin/sh" ]
+CMD [ "apostile", "-config=/go/src/github.com/docker/notary/fixtures/signer-config.json" ]
