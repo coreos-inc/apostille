@@ -24,5 +24,5 @@ RUN go install \
 #ADD fixtures/root-ca.crt /usr/local/share/ca-certificates/root-ca.crt
 RUN update-ca-certificates
 
-ENTRYPOINT [ "apostille" ]
-CMD [ "-config=fixtures/config.json" ]
+ENTRYPOINT [ "/bin/sh" ]
+CMD [ "apostile -config=fixtures/config.json" ]

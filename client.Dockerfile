@@ -13,14 +13,9 @@ RUN apt-get update && apt-get install -y \
 	--no-install-recommends \
 	&& rm -rf /var/lib/apt/lists/*
 
-RUN useradd -ms /bin/bash notary \
-	&& pip install codecov \
-	&& go get github.com/golang/lint/golint github.com/fzipp/gocyclo \
-	   github.com/client9/misspell/cmd/misspell \
-	   github.com/gordonklaus/ineffassign \
-	   github.com/HewlettPackard/gas
+RUN useradd -ms /bin/bash notary
 
-RUN go get github.com/docker/notary
+RUN go get github.com/docker/notary/cmd/notary
 
 ENV NOTARYDIR /go/src/github.com/docker/notary
 
@@ -30,4 +25,4 @@ RUN chmod -R a+rw /go
 
 WORKDIR ${NOTARYDIR}
 
-RUN make -C . client
+RUN make ci
