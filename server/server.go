@@ -112,12 +112,16 @@ func GetMetadataHandler(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 	// If user is listed as a signing_user, serve "signer" root
 	// signing users must have push access
-	if store.IsSigner(username, gun) {
+	tufRootSigner := ctx.Value(auth.TufRootSigner)
+	switch tufRootSigner  {
+	case "signer":
 		logger.Info("request user is a signer for this repo")
 		ctx = context.WithValue(ctx, notary.CtxKeyMetaStore, store.SignerRootMetaStore())
-	} else {
+	case "quay":
 		logger.Info("request user is not signer for this repo, will be served shared root")
 		ctx = context.WithValue(ctx, notary.CtxKeyMetaStore, store.AlternateRootMetaStore())
+	default:
+		return errors.ErrMetadataNotFound.WithDetail(fmt.Sprintf("Invalid tuf root signer %s", tufRootSigner))
 	}
 	return handlers.GetHandler(ctx, w, r)
 }

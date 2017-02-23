@@ -73,7 +73,7 @@ func TestTryFindKeyBadUrl(t *testing.T) {
 }
 
 func TestCheckOptions(t *testing.T) {
-	testCasesConfig := []testCase{
+	testCases := []testCase{
 		{"", "quay token auth requires a valid option string"},
 		{"not an int", "invalid duration not an int"},
 		{"1", "missing unit in duration"},
@@ -85,7 +85,7 @@ func TestCheckOptions(t *testing.T) {
 	config["service"] = "service"
 	config["keyserver"] = "keyserver"
 
-	for _, tc := range testCasesConfig {
+	for _, tc := range testCases {
 		if tc.in != "" {
 			config["updateKeyInterval"] = tc.in
 		}
@@ -96,6 +96,45 @@ func TestCheckOptions(t *testing.T) {
 	opt, err := checkOptions(config)
 	require.NoError(t, err)
 	require.Equal(t, opt.updateKeyInterval, 1*time.Second)
+}
+
+func TestGetTufRootSigner(t *testing.T) {
+	testCases := []testCase{
+		{"quay", "quay"},
+		{"signer", "signer"},
+	}
+
+	for _, tc := range testCases {
+		m := make(map[string]string)
+		m[TufRootSigner] = tc.in
+		signerName, err := getTufRootSigner(&JWTContext{Context: m})
+		require.NoError(t, err)
+		require.Equal(t, tc.out, signerName)
+	}
+
+	m := make(map[string]string)
+	_, err := getTufRootSigner(&JWTContext{Context: m})
+	require.Error(t, err)
+	require.Equal(t, err.Error(), "No TUF root signer key")
+
+	m[TufRootSigner] = ""
+	_, err = getTufRootSigner(&JWTContext{Context: m})
+	require.Error(t, err)
+	require.Equal(t, err.Error(), "No TUF root signer key")
+}
+
+func TestGetContext(t *testing.T) {
+	context, err := getContext("blah.eyJjb250ZXh0IjogeyJjb20uYXBvc3RpbGxlLnJvb3QiIDogInNpZ25lciJ9fQ==")
+	require.NoError(t, err)
+	require.Equal(t, "signer", context.Context[TufRootSigner])
+
+	_, err = getContext("blah.non_base_64_encoded_string")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "malformed token")
+
+	_, err = getContext("not_json_encoded_base_64.bm90IGpzb24gYXQgYWxs")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "malformed token")
 }
 
 func httpTestSetup(tc testCase) (keyserverAccessController, *httptest.Server) {

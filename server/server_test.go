@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	registryAuth "github.com/docker/distribution/registry/auth"
 	"github.com/coreos-inc/apostille/auth"
 	"github.com/coreos-inc/apostille/storage"
 	testUtils "github.com/coreos-inc/apostille/test"
@@ -49,7 +50,7 @@ func TestRepoPrefixMatches(t *testing.T) {
 
 	snChecksumBytes := sha256.Sum256(meta[data.CanonicalSnapshotRole])
 
-	ac := auth.NewTestingAccessController("testUser")
+	ac := auth.NewTestingAccessController("quay")
 
 	// successful gets
 	handler := TrustMultiplexerHandler(ac, ctx, cs, nil, nil, []string{"quay.io"})
@@ -92,7 +93,7 @@ func TestRepoPrefixDoesNotMatch(t *testing.T) {
 
 	snChecksumBytes := sha256.Sum256(meta[data.CanonicalSnapshotRole])
 
-	ac := auth.NewTestingAccessController("testUser")
+	ac := auth.NewTestingAccessController("quay")
 
 	// successful gets
 	handler := TrustMultiplexerHandler(ac, ctx, cs, nil, nil, []string{"nope"})
@@ -227,7 +228,7 @@ func TestGetRoleByHash(t *testing.T) {
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, data.ED25519Key)
 
 	ccc := utils.NewCacheControlConfig(10, false)
-	ac := auth.NewTestingAccessController("testUser")
+	ac := auth.NewTestingAccessController("quay")
 	handler := TrustMultiplexerHandler(ac, ctx, signed.NewEd25519(), ccc, ccc, nil)
 	serv := httptest.NewServer(handler)
 	defer serv.Close()
@@ -294,7 +295,7 @@ func TestGetRoleByVersion(t *testing.T) {
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, data.ED25519Key)
 
 	ccc := utils.NewCacheControlConfig(10, false)
-	ac := auth.NewTestingAccessController("testUser")
+	ac := auth.NewTestingAccessController("quay")
 	handler := TrustMultiplexerHandler(ac, ctx, signed.NewEd25519(), ccc, ccc, nil)
 	serv := httptest.NewServer(handler)
 	defer serv.Close()
@@ -338,7 +339,7 @@ func TestGetCurrentRole(t *testing.T) {
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, data.ED25519Key)
 
 	ccc := utils.NewCacheControlConfig(10, false)
-	ac := auth.NewTestingAccessController("testUser")
+	ac := auth.NewTestingAccessController("quay")
 	handler := TrustMultiplexerHandler(ac, ctx, signed.NewEd25519(), ccc, ccc, nil)
 	serv := httptest.NewServer(handler)
 	defer serv.Close()
@@ -432,201 +433,59 @@ func TestValidationErrorFormat(t *testing.T) {
 	require.IsType(t, validation.ErrBadHierarchy{}, err)
 }
 
-func TestSigningUserPushSignerUserPull(t *testing.T) {
-	gun := "quay.io/signingUser/testRepo"
+func TestSigningUserPushNonSignerPullSignerPull(t *testing.T) {
 	trust := testUtils.TrustServiceMock(t)
-	signerStore := notaryStorage.NewMemStorage()
-	rootRepo := testUtils.AlternateRootRepoMock(t, trust, "quay-root")
-	metaStore := storage.NewMultiplexingStore(signerStore, storage.NewAlternateRootMemStorage(trust, *rootRepo, signerStore), storage.NewSignerMemoryStore())
-	ctx := context.WithValue(context.Background(), notary.CtxKeyMetaStore, metaStore)
-	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, data.ED25519Key)
-
-	ac := auth.NewTestingAccessController("signingUser")
-	handler := TrustMultiplexerHandler(ac, ctx, trust, nil, nil, nil)
-	server := httptest.NewServer(handler)
-	defer server.Close()
-
-	client, err := store.NewHTTPStore(
-		fmt.Sprintf("%s/v2/%s/_trust/tuf/", server.URL, gun),
-		"",
-		"json",
-		"key",
-		http.DefaultTransport,
-	)
-	require.NoError(t, err)
-
-	repo := testUtils.AlternateRootRepoMock(t, trust, gun)
-	require.NoError(t, err)
-	r, tg, sn, ts, err := testutils.Sign(repo)
-	require.NoError(t, err)
-	rootJson, targetsJson, ssJson, tsJson, err := testutils.Serialize(r, tg, sn, ts)
-	require.NoError(t, err)
-
-	err = client.SetMulti(map[string][]byte{
-		data.CanonicalRootRole:      rootJson,
-		data.CanonicalTargetsRole:   targetsJson,
-		data.CanonicalSnapshotRole:  ssJson,
-		data.CanonicalTimestampRole: tsJson,
-	})
-	require.NoError(t, err)
-
-	serverRootJson, err := client.GetSized(data.CanonicalRootRole, -1)
-	require.NoError(t, err)
-	require.Equal(t, rootJson, serverRootJson)
-
-	serverTargetsJson, err := client.GetSized(data.CanonicalTargetsRole, -1)
-	require.NoError(t, err)
-	require.Equal(t, targetsJson, serverTargetsJson)
-
-	serverSnapshotJson, err := client.GetSized(data.CanonicalSnapshotRole, -1)
-	require.NoError(t, err)
-	require.Equal(t, ssJson, serverSnapshotJson)
-
-	_, err = client.GetSized(data.CanonicalTimestampRole, -1)
-	require.NoError(t, err)
-}
-
-func TestSigningUserPushNonSignerPull(t *testing.T) {
+	ac := auth.NewTestingAccessController("signer")
 	gun := "quay.io/signingUser/testRepo"
-	trust := testUtils.TrustServiceMock(t)
-	signerStore := notaryStorage.NewMemStorage()
-	rootRepo := testUtils.AlternateRootRepoMock(t, trust, "quay-root")
-	metaStore := storage.NewMultiplexingStore(signerStore, storage.NewAlternateRootMemStorage(trust, *rootRepo, signerStore), storage.NewSignerMemoryStore())
-	ctx := context.WithValue(context.Background(), notary.CtxKeyMetaStore, metaStore)
-	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, data.ED25519Key)
-
-	ac := auth.NewTestingAccessController("signingUser")
-	handler := TrustMultiplexerHandler(ac, ctx, trust, nil, nil, nil)
-	server := httptest.NewServer(handler)
+	server, client := testServerAndClient(t, "quay.io/*", gun, trust, ac)
 	defer server.Close()
+	repo := testUtils.CreateRepo(t, gun, trust)
+	rootJson, targetsJson, ssJson, _ := testUtils.PushRepo(t, repo, client)
 
-	client, err := store.NewHTTPStore(
-		fmt.Sprintf("%s/v2/%s/_trust/tuf/", server.URL, gun),
-		"",
-		"json",
-		"key",
-		http.DefaultTransport,
-	)
-	require.NoError(t, err)
+	testUtils.RemoteEqual(t, client, data.CanonicalRootRole, rootJson)
+	testUtils.RemoteEqual(t, client, data.CanonicalTargetsRole, targetsJson)
+	testUtils.RemoteEqual(t, client, data.CanonicalSnapshotRole, ssJson)
 
-	repo := testUtils.AlternateRootRepoMock(t, trust, gun)
-	require.NoError(t, err)
-	r, tg, sn, ts, err := testutils.Sign(repo)
-	require.NoError(t, err)
-	rootJson, targetsJson, ssJson, tsJson, err := testutils.Serialize(r, tg, sn, ts)
-	require.NoError(t, err)
+	ac.TUFRoot = "quay"
 
-	err = client.SetMulti(map[string][]byte{
-		data.CanonicalRootRole:      rootJson,
-		data.CanonicalTargetsRole:   targetsJson,
-		data.CanonicalSnapshotRole:  ssJson,
-		data.CanonicalTimestampRole: tsJson,
-	})
-	require.NoError(t, err)
-
-	testAC, ok := ac.(*auth.TestingAccessController)
-	require.True(t, ok)
-	testAC.Username = "nonsigning-user"
-
-	serverRootJson, err := client.GetSized(data.CanonicalRootRole, -1)
-	require.NoError(t, err)
-	require.NotEqual(t, rootJson, serverRootJson)
-
-	serverTargetsJson, err := client.GetSized(data.CanonicalTargetsRole, -1)
-	require.NoError(t, err)
-	require.NotEqual(t, targetsJson, serverTargetsJson)
-
-	serverSnapshotJson, err := client.GetSized(data.CanonicalSnapshotRole, -1)
-	require.NoError(t, err)
-	require.NotEqual(t, ssJson, serverSnapshotJson)
-
-	serverTargetsReleasesJson, err := client.GetSized("targets/releases", -1)
-	require.NoError(t, err)
-	require.Equal(t, targetsJson, serverTargetsReleasesJson)
-
-	_, err = client.GetSized(data.CanonicalTimestampRole, -1)
-	require.NoError(t, err)
-}
-
-func TestPullingWithWildCardGivesSameRootKey(t *testing.T) {
-	gun := "quay.io/signingUser/testRepo"
-	trust := testUtils.TrustServiceMock(t)
-	signerStore := notaryStorage.NewMemStorage()
-	rootRepo := testUtils.AlternateRootRepoMock(t, trust, "quay.io/*")
-	metaStore := storage.NewMultiplexingStore(signerStore, storage.NewAlternateRootMemStorage(trust, *rootRepo, signerStore), storage.NewSignerMemoryStore())
-	ctx := context.WithValue(context.Background(), notary.CtxKeyMetaStore, metaStore)
-	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, data.ED25519Key)
-
-	ac := auth.NewTestingAccessController("signingUser")
-	handler := TrustMultiplexerHandler(ac, ctx, trust, nil, nil, nil)
-	server := httptest.NewServer(handler)
-	defer server.Close()
-
-	client, err := store.NewHTTPStore(
-		fmt.Sprintf("%s/v2/%s/_trust/tuf/", server.URL, gun),
-		"",
-		"json",
-		"key",
-		http.DefaultTransport,
-	)
-	require.NoError(t, err)
-
-	repo := testUtils.AlternateRootRepoMock(t, trust, gun)
-	require.NoError(t, err)
-	r, tg, sn, ts, err := testutils.Sign(repo)
-	require.NoError(t, err)
-	rootJson, targetsJson, ssJson, tsJson, err := testutils.Serialize(r, tg, sn, ts)
-	require.NoError(t, err)
-
-	err = client.SetMulti(map[string][]byte{
-		data.CanonicalRootRole:      rootJson,
-		data.CanonicalTargetsRole:   targetsJson,
-		data.CanonicalSnapshotRole:  ssJson,
-		data.CanonicalTimestampRole: tsJson,
-	})
-	require.NoError(t, err)
-
-	testAC, ok := ac.(*auth.TestingAccessController)
-	require.True(t, ok)
-	testAC.Username = "nonsigning-user"
-
-	serverRootJson, err := client.GetSized(data.CanonicalRootRole, -1)
-	require.NoError(t, err)
-	require.NotEqual(t, rootJson, serverRootJson)
-
-	rootRepoRootJson, err := rootRepo.Root.MarshalJSON()
-	require.NoError(t, err)
-	require.Equal(t, rootRepoRootJson, serverRootJson)
-
-	serverTargetsJson, err := client.GetSized(data.CanonicalTargetsRole, -1)
-	require.NoError(t, err)
-	require.NotEqual(t, targetsJson, serverTargetsJson)
-
-	serverSnapshotJson, err := client.GetSized(data.CanonicalSnapshotRole, -1)
-	require.NoError(t, err)
-	require.NotEqual(t, ssJson, serverSnapshotJson)
-
-	serverTargetsReleasesJson, err := client.GetSized("targets/releases", -1)
-	require.NoError(t, err)
-	require.Equal(t, targetsJson, serverTargetsReleasesJson)
-
-	_, err = client.GetSized(data.CanonicalTimestampRole, -1)
-	require.NoError(t, err)
+	testUtils.RemoteNotEqual(t, client, data.CanonicalRootRole, rootJson)
+	testUtils.RemoteNotEqual(t, client, data.CanonicalTargetsRole, targetsJson)
+	testUtils.RemoteNotEqual(t, client, data.CanonicalSnapshotRole, ssJson)
+	testUtils.RemoteEqual(t, client, "targets/releases", targetsJson)
 }
 
 func TestSigningUserPushSignerPullNonSignerPull(t *testing.T) {
-	gun := "quay.io/signingUser/testRepo"
 	trust := testUtils.TrustServiceMock(t)
+	ac := auth.NewTestingAccessController("signer")
+	gun := "quay.io/signingUser/testRepo"
+	server, client := testServerAndClient(t, "quay.io/*", gun, trust, ac)
+	defer server.Close()
+	repo := testUtils.CreateRepo(t, gun, trust)
+	rootJson, targetsJson, ssJson, _ := testUtils.PushRepo(t, repo, client)
+
+	ac.TUFRoot = "quay"
+
+	testUtils.RemoteNotEqual(t, client, data.CanonicalRootRole, rootJson)
+	testUtils.RemoteNotEqual(t, client, data.CanonicalTargetsRole, targetsJson)
+	testUtils.RemoteNotEqual(t, client, data.CanonicalSnapshotRole, ssJson)
+	testUtils.RemoteEqual(t, client, "targets/releases", targetsJson)
+
+	ac.TUFRoot = "signer"
+
+	testUtils.RemoteEqual(t, client, data.CanonicalRootRole, rootJson)
+	testUtils.RemoteEqual(t, client, data.CanonicalTargetsRole, targetsJson)
+	testUtils.RemoteEqual(t, client, data.CanonicalSnapshotRole, ssJson)
+}
+
+func testServerAndClient(t *testing.T, rootMetaName, gun string, trust signed.CryptoService, ac registryAuth.AccessController) (*httptest.Server, store.RemoteStore) {
 	signerStore := notaryStorage.NewMemStorage()
-	rootRepo := testUtils.AlternateRootRepoMock(t, trust, "quay-root")
+	rootRepo := testUtils.CreateRepo(t, rootMetaName, trust)
 	metaStore := storage.NewMultiplexingStore(signerStore, storage.NewAlternateRootMemStorage(trust, *rootRepo, signerStore), storage.NewSignerMemoryStore())
 	ctx := context.WithValue(context.Background(), notary.CtxKeyMetaStore, metaStore)
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, data.ED25519Key)
 
-	ac := auth.NewTestingAccessController("signingUser")
 	handler := TrustMultiplexerHandler(ac, ctx, trust, nil, nil, nil)
 	server := httptest.NewServer(handler)
-	defer server.Close()
 
 	client, err := store.NewHTTPStore(
 		fmt.Sprintf("%s/v2/%s/_trust/tuf/", server.URL, gun),
@@ -636,57 +495,5 @@ func TestSigningUserPushSignerPullNonSignerPull(t *testing.T) {
 		http.DefaultTransport,
 	)
 	require.NoError(t, err)
-
-	repo := testUtils.AlternateRootRepoMock(t, trust, gun)
-	require.NoError(t, err)
-	r, tg, sn, ts, err := testutils.Sign(repo)
-	require.NoError(t, err)
-	rootJson, targetsJson, ssJson, tsJson, err := testutils.Serialize(r, tg, sn, ts)
-	require.NoError(t, err)
-
-	err = client.SetMulti(map[string][]byte{
-		data.CanonicalRootRole:      rootJson,
-		data.CanonicalTargetsRole:   targetsJson,
-		data.CanonicalSnapshotRole:  ssJson,
-		data.CanonicalTimestampRole: tsJson,
-	})
-	require.NoError(t, err)
-
-	serverRootJson, err := client.GetSized(data.CanonicalRootRole, -1)
-	require.NoError(t, err)
-	require.Equal(t, rootJson, serverRootJson)
-
-	serverTargetsJson, err := client.GetSized(data.CanonicalTargetsRole, -1)
-	require.NoError(t, err)
-	require.Equal(t, targetsJson, serverTargetsJson)
-
-	serverSnapshotJson, err := client.GetSized(data.CanonicalSnapshotRole, -1)
-	require.NoError(t, err)
-	require.Equal(t, ssJson, serverSnapshotJson)
-
-	_, err = client.GetSized(data.CanonicalTimestampRole, -1)
-	require.NoError(t, err)
-
-	testAC, ok := ac.(*auth.TestingAccessController)
-	require.True(t, ok)
-	testAC.Username = "nonsigning-user"
-
-	serverRootJson, err = client.GetSized(data.CanonicalRootRole, -1)
-	require.NoError(t, err)
-	require.NotEqual(t, rootJson, serverRootJson)
-
-	serverTargetsJson, err = client.GetSized(data.CanonicalTargetsRole, -1)
-	require.NoError(t, err)
-	require.NotEqual(t, targetsJson, serverTargetsJson)
-
-	serverSnapshotJson, err = client.GetSized(data.CanonicalSnapshotRole, -1)
-	require.NoError(t, err)
-	require.NotEqual(t, ssJson, serverSnapshotJson)
-
-	serverTargetsReleasesJson, err := client.GetSized("targets/releases", -1)
-	require.NoError(t, err)
-	require.Equal(t, targetsJson, serverTargetsReleasesJson)
-
-	_, err = client.GetSized(data.CanonicalTimestampRole, -1)
-	require.NoError(t, err)
+	return server, client
 }

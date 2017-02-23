@@ -8,12 +8,19 @@ import (
 	"time"
 	"encoding/json"
 	"sync"
+	"encoding/base64"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/distribution/context"
 	registryAuth "github.com/docker/distribution/registry/auth"
 	registryToken "github.com/docker/distribution/registry/auth/token"
 	"github.com/docker/libtrust"
+	"errors"
+)
+
+const (
+	TufRootSigner  string = "com.apostille.root"
+	TokenSeparator        = "."
 )
 
 // keyserverAccessController implements the auth.AccessController interface.
@@ -39,6 +46,10 @@ type tokenAccessOptions struct {
 
 type Keys struct {
 	Keys []json.RawMessage `json:"key"`
+}
+
+type JWTContext struct {
+	Context map[string]string `json:"context"`
 }
 
 // checkOptions gathers the necessary options
@@ -150,7 +161,19 @@ func (ac *keyserverAccessController) Authorized(ctx context.Context, accessItems
 		}
 	}
 
-	return registryAuth.WithUser(ctx, registryAuth.UserInfo{Name: token.Claims.Subject}), nil
+	jwtContext, err := getContext(rawToken)
+	if err != nil {
+		challenge.err = err
+		return nil, challenge
+	}
+
+	tufRootSigner, err := getTufRootSigner(jwtContext)
+	if err != nil {
+		challenge.err = err
+		return nil, challenge
+	}
+
+	return context.WithValue(ctx, TufRootSigner, tufRootSigner), nil
 }
 
 // VerifyNonX509 attempts to verify this token using the given options.
@@ -283,4 +306,36 @@ func (ac *keyserverAccessController) tryFindKey(keyId string) (libtrust.PublicKe
 		return nil, fmt.Errorf("unable to decode JWK value: %s", err)
 	}
 	return pubKey, nil
+}
+
+func getTufRootSigner(myToken *JWTContext) (string, error) {
+	tufRootSigner, ok := myToken.Context[TufRootSigner]
+	if !ok || tufRootSigner == "" {
+		return "", errors.New("No TUF root signer key")
+	}
+	return tufRootSigner, nil
+}
+
+func getContext(rawToken string) (*JWTContext, error) {
+	rawClaims := strings.Split(rawToken, TokenSeparator)[1]
+
+	var (
+		contextJson       []byte
+		err               error
+		ErrMalformedToken = errors.New("malformed token")
+	)
+
+	if contextJson, err = base64.URLEncoding.DecodeString(rawClaims); err != nil {
+		err = fmt.Errorf("unable to decode claims: %s", err)
+		return nil, ErrMalformedToken
+	}
+
+	jwtContext := new(JWTContext)
+
+	if err = json.Unmarshal(contextJson, jwtContext); err != nil {
+		err = fmt.Errorf("unable to unmarshal jwt context: %s", err)
+		return nil, ErrMalformedToken
+	}
+
+	return jwtContext, nil
 }

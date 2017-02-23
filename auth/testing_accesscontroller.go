@@ -8,14 +8,14 @@ import (
 
 // testingAccessController implements the auth.AccessController interface.
 type TestingAccessController struct {
-	Username string
+	TUFRoot string
 	Allow    bool
 }
 
 // NewTestingAccessController creates a testingAccessController, only for use in tests
-func NewTestingAccessController(username string) registryAuth.AccessController {
+func NewTestingAccessController(tufRoot string) *TestingAccessController {
 	return &TestingAccessController{
-		Username: username,
+		TUFRoot: tufRoot,
 		Allow:    true, // by default, all requests are authorized
 	}
 }
@@ -33,6 +33,5 @@ func (ac *TestingAccessController) Authorized(ctx context.Context, accessItems .
 		challenge.err = registryToken.ErrInsufficientScope
 		return nil, challenge
 	}
-
-	return registryAuth.WithUser(ctx, registryAuth.UserInfo{Name: ac.Username}), nil
+	return context.WithValue(ctx, TufRootSigner, ac.TUFRoot), nil
 }
