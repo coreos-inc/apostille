@@ -540,7 +540,7 @@ func TestSigningUserPushNonSignerPull(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEqual(t, ssJson, serverSnapshotJson)
 
-	serverTargetsReleasesJson, err := client.GetSized("targets/releases", -1)
+	serverTargetsReleasesJson, err := client.GetSized(storage.StashedTargetsRole, -1)
 	require.NoError(t, err)
 	require.Equal(t, targetsJson, serverTargetsReleasesJson)
 
@@ -606,7 +606,7 @@ func TestPullingWithWildCardGivesSameRootKey(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEqual(t, ssJson, serverSnapshotJson)
 
-	serverTargetsReleasesJson, err := client.GetSized("targets/releases", -1)
+	serverTargetsReleasesJson, err := client.GetSized(storage.StashedTargetsRole, -1)
 	require.NoError(t, err)
 	require.Equal(t, targetsJson, serverTargetsReleasesJson)
 
@@ -683,7 +683,7 @@ func TestSigningUserPushSignerPullNonSignerPull(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEqual(t, ssJson, serverSnapshotJson)
 
-	serverTargetsReleasesJson, err := client.GetSized("targets/releases", -1)
+	serverTargetsReleasesJson, err := client.GetSized(storage.StashedTargetsRole, -1)
 	require.NoError(t, err)
 	require.Equal(t, targetsJson, serverTargetsReleasesJson)
 
