@@ -3,12 +3,15 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/Sirupsen/logrus"
 	notaryStorage "github.com/docker/notary/server/storage"
 	"github.com/docker/notary/tuf"
 	"github.com/docker/notary/tuf/data"
 	"github.com/docker/notary/tuf/signed"
 )
+
+const StashedTargetsRole = "targets/releases"
 
 // Username represents a username string
 type Username string
@@ -75,6 +78,7 @@ func (st *AlternateRootStore) copyAlternateRoot() (*tuf.Repo, error) {
 	return repo, nil
 }
 
+// mapUpdatesToRoles puts updates into maps accessible by name, instead of a list
 func (st *AlternateRootStore) mapUpdatesToRoles(updates []notaryStorage.MetaUpdate) (map[string]notaryStorage.MetaUpdate, map[string]int) {
 	oldMetadata := make(map[string]notaryStorage.MetaUpdate)
 	oldMetadataIdx := map[string]int{
@@ -90,11 +94,11 @@ func (st *AlternateRootStore) mapUpdatesToRoles(updates []notaryStorage.MetaUpda
 				oldMetadataIdx[role] = i
 			}
 		}
-		logrus.Info(string(u.Data))
 	}
 	return oldMetadata, oldMetadataIdx
 }
 
+// swizzleTargets modifies the updates so that correct targets and delegations are created in the alternate root store
 func (st *AlternateRootStore) swizzleTargets(gun string, updates []notaryStorage.MetaUpdate) ([]notaryStorage.MetaUpdate, error) {
 	repo, err := st.copyAlternateRoot()
 	if err != nil {
@@ -108,9 +112,14 @@ func (st *AlternateRootStore) swizzleTargets(gun string, updates []notaryStorage
 		return updates, nil
 	}
 
+	if oldMetadataIdx[StashedTargetsRole] == -1 {
+		logrus.Info("attempting to overwrite stashed signer-rooted targets file")
+		return nil, fmt.Errorf("attempting to overwrite reserved delegation: %s", StashedTargetsRole)
+	}
+
 	logrus.Info("swizzling targets role for update")
 
-	// fetch target keys from root - these will be pushed down to targets/releases
+	// fetch target keys from root - these will be pushed down to StashedTargetsRole
 	// and replaced with the global target keys
 	var oldTargetKeys data.KeyList
 	var decodedRoot data.SignedRoot
@@ -139,30 +148,30 @@ func (st *AlternateRootStore) swizzleTargets(gun string, updates []notaryStorage
 		logrus.Info("found key ", key)
 	}
 
-	// add a targets/releases delegations that contains the keys from targets
+	// add a StashedTargetsRole delegations that contains the keys from targets
 	// this is adding the delegation to the 'targets' metadata
-	err = repo.UpdateDelegationKeys("targets/releases", oldTargetKeys, []string{}, 1)
+	err = repo.UpdateDelegationKeys(StashedTargetsRole, oldTargetKeys, []string{}, 1)
 	if err != nil {
 		return nil, err
 	}
 	logrus.Info("delegation created")
-	err = repo.UpdateDelegationPaths("targets/releases", []string{""}, []string{}, false)
+	err = repo.UpdateDelegationPaths(StashedTargetsRole, []string{""}, []string{}, false)
 	logrus.Info("delegation paths updated")
 	if err != nil {
 		return nil, err
 	}
 
-	// copy the original targets file as-is over to 'targets/releases'
+	// copy the original targets file as-is over to 'StashedTargetsRole'
 	var decodedTargets data.Signed
 	err = json.Unmarshal(oldMetadata[data.CanonicalTargetsRole].Data, &decodedTargets)
 	if err != nil {
 		return nil, err
 	}
-	signedReleases, err := data.TargetsFromSigned(&decodedTargets, "targets/releases")
+	signedReleases, err := data.TargetsFromSigned(&decodedTargets, StashedTargetsRole)
 	if err != nil {
 		return nil, err
 	}
-	repo.Targets["targets/releases"] = signedReleases
+	repo.Targets[StashedTargetsRole] = signedReleases
 
 	// resign targets, snapshot, and timestamp - the signer has all of these keys
 	if _, err = repo.SignTargets(data.CanonicalTargetsRole, data.DefaultExpires(data.CanonicalTimestampRole)); err != nil {
@@ -207,15 +216,15 @@ func (st *AlternateRootStore) swizzleTargets(gun string, updates []notaryStorage
 	logrus.Info("new ts: ", string(newTS))
 	updates[oldMetadataIdx[data.CanonicalTimestampRole]].Data = newTS
 
-	newReleases, err := repo.Targets["targets/releases"].MarshalJSON()
+	newReleases, err := repo.Targets[StashedTargetsRole].MarshalJSON()
 	if err != nil {
 		return nil, err
 	}
 	logrus.Info("new releases: ", string(newReleases))
 	updates = append(updates, notaryStorage.MetaUpdate{
-		Role:    "targets/releases",
+		Role:    StashedTargetsRole,
 		Data:    newReleases,
-		Version: repo.Targets["targets/releases"].Signed.Version,
+		Version: repo.Targets[StashedTargetsRole].Signed.Version,
 	})
 
 	return updates, nil
