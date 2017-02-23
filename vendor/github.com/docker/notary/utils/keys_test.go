@@ -5,14 +5,15 @@ import (
 	"crypto/rand"
 	"encoding/pem"
 	"errors"
-	"github.com/docker/notary"
-	"github.com/docker/notary/tuf/data"
-	"github.com/docker/notary/tuf/utils"
-	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/docker/notary"
+	"github.com/docker/notary/tuf/data"
+	"github.com/docker/notary/tuf/utils"
+	"github.com/stretchr/testify/require"
 )
 
 const cannedPassphrase = "passphrase"
@@ -252,7 +253,7 @@ func TestImportKeys(t *testing.T) {
 	c.Bytes, _ = ioutil.ReadAll(from)
 	rand.Read(c.Bytes)
 	c.Headers["path"] = "morpork"
-	c.Headers["role"] = data.CanonicalSnapshotRole
+	c.Headers["role"] = data.CanonicalSnapshotRole.String()
 	c.Headers["gun"] = "somegun"
 
 	bBytes := pem.EncodeToMemory(b)
@@ -278,7 +279,7 @@ func TestImportKeys(t *testing.T) {
 	require.Equal(t, c.Bytes, cFinal.Bytes)
 	_, ok = cFinal.Headers["path"]
 	require.False(t, ok, "expected no path header, should have been removed at import")
-	require.Equal(t, data.CanonicalSnapshotRole, cFinal.Headers["role"])
+	require.EqualValues(t, data.CanonicalSnapshotRole, cFinal.Headers["role"])
 	require.Equal(t, "somegun", cFinal.Headers["gun"])
 	require.Len(t, cRest, 0)
 }
@@ -292,7 +293,7 @@ func TestImportNoPath(t *testing.T) {
 
 	in := bytes.NewBuffer(fromBytes)
 
-	err := ImportKeys(in, []Importer{s}, data.CanonicalRootRole, "", passphraseRetriever)
+	err := ImportKeys(in, []Importer{s}, data.CanonicalRootRole.String(), "", passphraseRetriever)
 	require.NoError(t, err)
 
 	for key := range s.data {
@@ -317,7 +318,7 @@ func TestNonRootPathInference(t *testing.T) {
 
 	in := bytes.NewBuffer(fromBytes)
 
-	err := ImportKeys(in, []Importer{s}, data.CanonicalSnapshotRole, "somegun", passphraseRetriever)
+	err := ImportKeys(in, []Importer{s}, data.CanonicalSnapshotRole.String(), "somegun", passphraseRetriever)
 	require.NoError(t, err)
 
 	for key := range s.data {
@@ -333,7 +334,7 @@ func TestBlockHeaderPrecedenceRoleAndGun(t *testing.T) {
 	defer from.Close()
 	fromBytes, _ := ioutil.ReadAll(from)
 	b, _ := pem.Decode(fromBytes)
-	b.Headers["role"] = data.CanonicalSnapshotRole
+	b.Headers["role"] = data.CanonicalSnapshotRole.String()
 	b.Headers["gun"] = "anothergun"
 	bBytes := pem.EncodeToMemory(b)
 
@@ -361,7 +362,7 @@ func TestBlockHeaderPrecedenceGunFromPath(t *testing.T) {
 	defer from.Close()
 	fromBytes, _ := ioutil.ReadAll(from)
 	b, _ := pem.Decode(fromBytes)
-	b.Headers["role"] = data.CanonicalSnapshotRole
+	b.Headers["role"] = data.CanonicalSnapshotRole.String()
 	b.Headers["path"] = filepath.Join(notary.NonRootKeysSubdir, "anothergun", "12ba0e0a8e05e177bc2c3489bdb6d28836879469f078e68a4812fc8a2d521497")
 	bBytes := pem.EncodeToMemory(b)
 
@@ -376,8 +377,8 @@ func TestBlockHeaderPrecedenceGunFromPath(t *testing.T) {
 		require.Equal(t, "12ba0e0a8e05e177bc2c3489bdb6d28836879469f078e68a4812fc8a2d521497", key)
 		final, rest := pem.Decode(s.data[key])
 		require.Len(t, rest, 0)
-		require.Equal(t, final.Headers["role"], "snapshot")
-		require.Equal(t, final.Headers["gun"], "anothergun")
+		require.Equal(t, "snapshot", final.Headers["role"])
+		require.Equal(t, "anothergun", final.Headers["gun"])
 	}
 }
 
@@ -445,12 +446,12 @@ func TestImportKeys2InOneFileNoPath(t *testing.T) {
 	fromBytes, _ := ioutil.ReadAll(from)
 	b, _ := pem.Decode(fromBytes)
 	b.Headers["gun"] = "testgun"
-	b.Headers["role"] = data.CanonicalSnapshotRole
+	b.Headers["role"] = data.CanonicalSnapshotRole.String()
 	bBytes := pem.EncodeToMemory(b)
 
 	b2, _ := pem.Decode(fromBytes)
 	b2.Headers["gun"] = "testgun"
-	b2.Headers["role"] = data.CanonicalSnapshotRole
+	b2.Headers["role"] = data.CanonicalSnapshotRole.String()
 	b2Bytes := pem.EncodeToMemory(b2)
 
 	c := &pem.Block{

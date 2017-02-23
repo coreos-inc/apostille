@@ -1,5 +1,5 @@
-hash: 00d600da6773016f1625ba64e43cc51c1ad084fbe307dcc4ffc2f2cb04ebf14d
-updated: 2017-01-30T11:04:36.648596244-05:00
+hash: a71b028c838e40456043998f6850ff4882e744f5448819fa06dbda677abbd7dc
+updated: 2017-02-23T18:54:00.609751661-05:00
 imports:
 - name: github.com/agl/ed25519
   version: 278e1ec8e8a6e017cd07577924d6766039146ced
@@ -47,8 +47,7 @@ imports:
 - name: github.com/docker/libtrust
   version: fa567046d9b14f6aa788882a950d69651d230b21
 - name: github.com/docker/notary
-  version: 38162401a8205928a002e42d0f2d22ef975aa5f4
-  repo: git@github.com:ecordell/notary.git
+  version: b5a20a3b0a47085ccc548c3a37838c8950f16460
   subpackages:
   - cryptoservice
   - passphrase
@@ -128,7 +127,7 @@ imports:
 - name: github.com/Shopify/logrus-bugsnag
   version: 5a46080c635f13e8b60c24765c19d62e1ca8d0fb
 - name: github.com/Sirupsen/logrus
-  version: d26492970760ca5d33129d2d799e34be5c4782eb
+  version: c078b1e43f58d563c74cebe63c85789e76ddb627
 - name: github.com/spf13/cast
   version: 4d07383ffe94b5e5a6fa3af9211374a4507a0184
 - name: github.com/spf13/jwalterweatherman
@@ -163,7 +162,7 @@ imports:
   subpackages:
   - unix
 - name: google.golang.org/grpc
-  version: 0032a855ba5c8a3c8e0d71c2deef354b70af1584
+  version: 708a7f9f3283aa2d4f6132d287d78683babe55c8
   subpackages:
   - codes
   - credentials
@@ -173,6 +172,8 @@ imports:
   - metadata
   - naming
   - peer
+  - stats
+  - tap
   - transport
 - name: gopkg.in/dancannon/gorethink.v3
   version: 417badecf1ab14d0d6e38ad82397da2a59e2f6ca

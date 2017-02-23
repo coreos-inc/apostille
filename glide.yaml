@@ -16,8 +16,7 @@ import:
   - tlsconfig
 - package: github.com/docker/libtrust
 - package: github.com/docker/notary
-  version: 38162401a8205928a002e42d0f2d22ef975aa5f4
-  repo: git@github.com:ecordell/notary.git
+  version: b5a20a3b0a47085ccc548c3a37838c8950f16460
   subpackages:
   - cryptoservice
   - server
@@ -42,7 +41,7 @@ import:
   subpackages:
   - context
 - package: google.golang.org/grpc
-  version: 0032a855ba5c8a3c8e0d71c2deef354b70af1584
+  version: v1.0.5
 - package: github.com/golang/protobuf
   version: c3cefd437628a0b7d31b34fe44b3a7a540e98527
 testImport:
