@@ -5,6 +5,7 @@ import (
 	"github.com/docker/notary/cryptoservice"
 	pb "github.com/docker/notary/proto"
 	"github.com/docker/notary/signer"
+	store "github.com/docker/notary/storage"
 	"github.com/docker/notary/signer/api"
 	"github.com/docker/notary/signer/client"
 	"github.com/docker/notary/trustmanager"
@@ -19,6 +20,7 @@ import (
 	"os"
 	"testing"
 	"time"
+	"github.com/docker/notary/tuf/testutils"
 )
 
 var constPass = func(string, string, bool, int) (string, bool, error) {
@@ -81,7 +83,7 @@ func TrustServiceMock(t *testing.T) signed.CryptoService {
 	return trust
 }
 
-func AlternateRootRepoMock(t *testing.T, cs signed.CryptoService, gun string) *tuf.Repo {
+func CreateRepo(t *testing.T, gun string, cs signed.CryptoService) *tuf.Repo {
 
 	rootPublicKey, err := cs.Create(data.CanonicalRootRole, gun, data.ECDSAKey)
 	require.NoError(t, err)
@@ -139,3 +141,34 @@ func AlternateRootRepoMock(t *testing.T, cs signed.CryptoService, gun string) *t
 
 	return repo
 }
+
+
+func PushRepo(t *testing.T, repo *tuf.Repo, client store.RemoteStore) ([]byte, []byte, []byte, []byte) {
+	r, tg, sn, ts, err := testutils.Sign(repo)
+	require.NoError(t, err)
+	rootJson, targetsJson, ssJson, tsJson, err := testutils.Serialize(r, tg, sn, ts)
+	require.NoError(t, err)
+
+	err = client.SetMulti(map[string][]byte{
+		data.CanonicalRootRole:      rootJson,
+		data.CanonicalTargetsRole:   targetsJson,
+		data.CanonicalSnapshotRole:  ssJson,
+		data.CanonicalTimestampRole: tsJson,
+	})
+	require.NoError(t, err)
+
+	return rootJson, targetsJson, ssJson, tsJson
+}
+
+func RemoteEqual(t *testing.T, client store.RemoteStore, role string, metadata []byte) {
+	serverMetaJson, err := client.GetSized(role, -1)
+	require.NoError(t, err)
+	require.Equal(t, metadata, serverMetaJson)
+}
+
+func RemoteNotEqual(t *testing.T, client store.RemoteStore, role string, metadata []byte) {
+	serverMetaJson, err := client.GetSized(role, -1)
+	require.NoError(t, err)
+	require.NotEqual(t, metadata, serverMetaJson)
+}
+
