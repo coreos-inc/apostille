@@ -91,15 +91,12 @@ func getStore(configuration *viper.Viper, trust signed.CryptoService, rootRepo *
 	notaryStorage.MetaStore, error) {
 	var store notaryStorage.MetaStore
 	var alternateRootStore notaryStorage.MetaStore
-	var signerStore storage.SignerStore
 
 	backend := configuration.GetString("storage.backend")
 	logrus.Infof("Using %s backend", backend)
 
 	switch backend {
 	case notary.MemoryBackend:
-		signerStore = storage.NewSignerMemoryStore()
-		logrus.Info(signerStore)
 		store = notaryStorage.NewMemStorage()
 		logrus.Info(store)
 		alternateRootStore = storage.NewAlternateRootMemStorage(trust, *rootRepo, store)
@@ -135,15 +132,12 @@ func getStore(configuration *viper.Viper, trust signed.CryptoService, rootRepo *
 			return nil, fmt.Errorf("Error starting alternate %s driver: %s", backend, err.Error())
 		}
 		alternateRootStore = notaryStorage.NewTUFMetaStorage(as)
-
-		// SignerStore
-		signerStore = storage.NewSignerSQLStorage(s.DB)
 		hRegister("DB operational", time.Minute, s.CheckHealth)
 
 	default:
 		return nil, fmt.Errorf("%s is not a supported storage backend", backend)
 	}
-	return storage.NewMultiplexingStore(store, alternateRootStore, signerStore), nil
+	return storage.NewMultiplexingStore(store, alternateRootStore), nil
 }
 
 type signerFactory func(hostname, port string, tlsConfig *tls.Config) (*client.NotarySigner, error)

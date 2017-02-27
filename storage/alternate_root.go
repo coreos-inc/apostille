@@ -13,15 +13,6 @@ import (
 
 const StashedTargetsRole data.RoleName = "targets/releases"
 
-// Username represents a username string
-type Username string
-
-// SignerKey used for hashing user/gun pair for map keys
-type SignerKey struct {
-	user Username
-	gun  data.GUN
-}
-
 // AlternateRootStore stores metadata under a different root than is provided by the client
 type AlternateRootStore struct {
 	notaryStorage.MetaStore

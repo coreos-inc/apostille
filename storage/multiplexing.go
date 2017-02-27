@@ -13,7 +13,6 @@ import (
 // To accomplish this, it stores a set of signing users for each repo
 type MultiplexingMetaStore interface {
 	notaryStorage.MetaStore
-	SignerStore
 	SignerRootMetaStore() notaryStorage.MetaStore
 	AlternateRootMetaStore() notaryStorage.MetaStore
 }
@@ -23,15 +22,13 @@ type MultiplexingStore struct {
 	lock                   sync.Mutex
 	signerRootMetaStore    notaryStorage.MetaStore
 	alternateRootMetaStore notaryStorage.MetaStore
-	SignerStore
 }
 
 // NewMultiplexingStore composes a new Multiplexing store instance from underlying stores.
-func NewMultiplexingStore(store notaryStorage.MetaStore, alternateRootStore notaryStorage.MetaStore, signerStore SignerStore) *MultiplexingStore {
+func NewMultiplexingStore(store notaryStorage.MetaStore, alternateRootStore notaryStorage.MetaStore) *MultiplexingStore {
 	return &MultiplexingStore{
 		signerRootMetaStore:    store,
 		alternateRootMetaStore: alternateRootStore,
-		SignerStore:            signerStore,
 	}
 }
 

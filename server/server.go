@@ -94,16 +94,13 @@ func GetMetadataHandler(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	defer r.Body.Close()
 	vars := mux.Vars(r)
 
-	username := storage.Username("")
-	if userInfo, ok := ctx.Value("auth.user").(registryAuth.UserInfo); ok {
-		username = storage.Username(userInfo.Name)
-	}
+	tufRootSigner := ctx.Value(auth.TufRootSigner)
 	gun := data.GUN(vars["gun"])
 	s := ctx.Value(notary.CtxKeyMetaStore)
 	logger := ctxutil.GetLoggerWithFields(ctx, map[interface{}]interface{}{
-		"gun":      gun,
-		"username": username,
-	}, "gun", "username")
+		"gun":     gun,
+		"tufRoot": tufRootSigner,
+	}, "gun", "tufRoot")
 
 	store, ok := s.(storage.MultiplexingMetaStore)
 	if !ok {
@@ -111,10 +108,9 @@ func GetMetadataHandler(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return errors.ErrNoStorage.WithDetail(nil)
 	}
 
-	// If user is listed as a signing_user, serve "signer" root
+	// If user is listed as a signing user, serve "signer" root
 	// signing users must have push access
-	tufRootSigner := ctx.Value(auth.TufRootSigner)
-	switch tufRootSigner  {
+	switch tufRootSigner {
 	case "signer":
 		logger.Info("request user is a signer for this repo")
 		ctx = context.WithValue(ctx, notary.CtxKeyMetaStore, store.SignerRootMetaStore())
@@ -125,38 +121,6 @@ func GetMetadataHandler(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return errors.ErrMetadataNotFound.WithDetail(fmt.Sprintf("Invalid tuf root signer %s", tufRootSigner))
 	}
 	return handlers.GetHandler(ctx, w, r)
-}
-
-// UserScopedAtomicUpdateHandler records the username of the incoming request on the metastore, then proxies to
-// notary server's AtomicUpdateHandler
-func UserScopedAtomicUpdateHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	defer r.Body.Close()
-	vars := mux.Vars(r)
-
-	username := storage.Username("")
-	if userInfo, ok := ctx.Value("auth.user").(registryAuth.UserInfo); ok {
-		username = storage.Username(userInfo.Name)
-	}
-	gun := data.GUN(vars["gun"])
-
-	s := ctx.Value(notary.CtxKeyMetaStore)
-	logger := ctxutil.GetLoggerWithField(ctx, gun, "gun")
-
-	store, ok := s.(storage.MultiplexingMetaStore)
-	if !ok {
-		logger.Error("500 GET: no storage exists")
-		return errors.ErrNoStorage.WithDetail(nil)
-	}
-
-	// User must have push access to get here, so we know the user is a signer
-	if !store.IsSigner(username, gun) {
-		logger.Infof("Adding %s as a signer for %s", username, gun)
-		if err := store.AddUserAsSigner(username, gun); err != nil {
-			logger.Error("Unable to add %s as a signer for %s: %v", username, gun, err)
-		}
-	}
-
-	return handlers.AtomicUpdateHandler(ctx, w, r)
 }
 
 // TrustMutliplexerHandler wraps a standard notary server router and
@@ -176,18 +140,6 @@ func TrustMultiplexerHandler(ac registryAuth.AccessController, ctx context.Conte
 
 	authWrapper := utils.RootHandlerFactory(ctx, ac, trust)
 	notFoundError := errors.ErrMetadataNotFound.WithDetail(nil)
-
-	// Intercept POST requests to record which user created the TUF repo
-	r.Methods("POST").Path("/v2/{gun:.*}/_trust/tuf/").Handler(notaryServer.CreateHandler(
-		"UpdateTUF",
-		UserScopedAtomicUpdateHandler,
-		errors.ErrMetadataNotFound.WithDetail(nil),
-		false,
-		nil,
-		[]string{"push", "pull"},
-		authWrapper,
-		repoPrefixes,
-	))
 
 	// Intercept GET requests for TUF metadata, so we can serve different roots based on username
 	r.Methods("GET").Path("/v2/{gun:[^*]+}/_trust/tuf/{tufRole:root|targets(?:/[^/\\s]+)*|snapshot|timestamp}.{checksum:[a-fA-F0-9]{64}|[a-fA-F0-9]{96}|[a-fA-F0-9]{128}}.json").Handler(notaryServer.CreateHandler(
