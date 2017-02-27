@@ -11,18 +11,15 @@ import (
 	"github.com/docker/notary/tuf/signed"
 )
 
-const StashedTargetsRole = "targets/releases"
+const StashedTargetsRole data.RoleName = "targets/releases"
 
 // Username represents a username string
 type Username string
 
-// GUN represents a GUN string
-type GUN string
-
 // SignerKey used for hashing user/gun pair for map keys
 type SignerKey struct {
 	user Username
-	gun  GUN
+	gun  data.GUN
 }
 
 // AlternateRootStore stores metadata under a different root than is provided by the client
@@ -46,7 +43,7 @@ func NewAlternateRootStorage(cs signed.CryptoService, store notaryStorage.MetaSt
 // UpdateMany updates multiple TUF records at once
 // Since this roots all changes to the alternate root, we ignore changes to Root/Snapshot/TS here
 // and instead update those manually whenever targets data changes
-func (st *AlternateRootStore) UpdateMany(gun string, updates []notaryStorage.MetaUpdate) error {
+func (st *AlternateRootStore) UpdateMany(gun data.GUN, updates []notaryStorage.MetaUpdate) error {
 	updates, err := st.swizzleTargets(gun, updates)
 	if err != nil {
 		return err
@@ -79,9 +76,9 @@ func (st *AlternateRootStore) copyAlternateRoot() (*tuf.Repo, error) {
 }
 
 // mapUpdatesToRoles puts updates into maps accessible by name, instead of a list
-func (st *AlternateRootStore) mapUpdatesToRoles(updates []notaryStorage.MetaUpdate) (map[string]notaryStorage.MetaUpdate, map[string]int) {
-	oldMetadata := make(map[string]notaryStorage.MetaUpdate)
-	oldMetadataIdx := map[string]int{
+func (st *AlternateRootStore) mapUpdatesToRoles(updates []notaryStorage.MetaUpdate) (map[data.RoleName]notaryStorage.MetaUpdate, map[data.RoleName]int) {
+	oldMetadata := make(map[data.RoleName]notaryStorage.MetaUpdate)
+	oldMetadataIdx := map[data.RoleName]int{
 		data.CanonicalRootRole:      -1,
 		data.CanonicalSnapshotRole:  -1,
 		data.CanonicalTargetsRole:   -1,
@@ -99,7 +96,7 @@ func (st *AlternateRootStore) mapUpdatesToRoles(updates []notaryStorage.MetaUpda
 }
 
 // swizzleTargets modifies the updates so that correct targets and delegations are created in the alternate root store
-func (st *AlternateRootStore) swizzleTargets(gun string, updates []notaryStorage.MetaUpdate) ([]notaryStorage.MetaUpdate, error) {
+func (st *AlternateRootStore) swizzleTargets(gun data.GUN, updates []notaryStorage.MetaUpdate) ([]notaryStorage.MetaUpdate, error) {
 	repo, err := st.copyAlternateRoot()
 	if err != nil {
 		return nil, err

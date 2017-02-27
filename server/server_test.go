@@ -11,12 +11,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	registryAuth "github.com/docker/distribution/registry/auth"
 	"github.com/coreos-inc/apostille/auth"
 	"github.com/coreos-inc/apostille/storage"
 	testUtils "github.com/coreos-inc/apostille/test"
+	registryAuth "github.com/docker/distribution/registry/auth"
 	_ "github.com/docker/distribution/registry/auth/silly"
 	"github.com/docker/notary"
+	notaryServer "github.com/docker/notary/server"
 	notaryStorage "github.com/docker/notary/server/storage"
 	store "github.com/docker/notary/storage"
 	"github.com/docker/notary/tuf/data"
@@ -41,19 +42,17 @@ func TestRunBadAddr(t *testing.T) {
 }
 
 func TestRepoPrefixMatches(t *testing.T) {
-	gun := "quay.io/apostille"
+	var gun data.GUN = "docker.io/notary"
 	meta, cs, err := testutils.NewRepoMetadata(gun)
 	require.NoError(t, err)
-	metaStore := storage.NewMultiplexingStore(notaryStorage.NewMemStorage(), notaryStorage.NewMemStorage(), storage.NewSignerMemoryStore())
-	ctx := context.WithValue(context.Background(), notary.CtxKeyMetaStore, metaStore)
+
+	ctx := context.WithValue(context.Background(), notary.CtxKeyMetaStore, notaryStorage.NewMemStorage())
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, data.ED25519Key)
 
 	snChecksumBytes := sha256.Sum256(meta[data.CanonicalSnapshotRole])
 
-	ac := auth.NewTestingAccessController("quay")
-
 	// successful gets
-	handler := TrustMultiplexerHandler(ac, ctx, cs, nil, nil, []string{"quay.io"})
+	handler := notaryServer.RootHandler(ctx, nil, cs, nil, nil, []string{"docker.io"})
 	ts := httptest.NewServer(handler)
 
 	url := fmt.Sprintf("%s/v2/%s/_trust/tuf/", ts.URL, gun)
@@ -61,13 +60,13 @@ func TestRepoPrefixMatches(t *testing.T) {
 	require.NoError(t, err)
 
 	// uploading is cool
-	require.NoError(t, uploader.SetMulti(meta))
+	require.NoError(t, uploader.SetMulti(data.MetadataRoleMapToStringMap(meta)))
 	// getting is cool
-	_, err = uploader.GetSized(data.CanonicalSnapshotRole, notary.MaxDownloadSize)
+	_, err = uploader.GetSized(data.CanonicalSnapshotRole.String(), notary.MaxDownloadSize)
 	require.NoError(t, err)
 
 	_, err = uploader.GetSized(
-		tufutils.ConsistentName(data.CanonicalSnapshotRole, snChecksumBytes[:]), notary.MaxDownloadSize)
+		tufutils.ConsistentName(data.CanonicalSnapshotRole.String(), snChecksumBytes[:]), notary.MaxDownloadSize)
 	require.NoError(t, err)
 
 	_, err = uploader.GetKey(data.CanonicalTimestampRole)
@@ -83,42 +82,40 @@ func TestRepoPrefixMatches(t *testing.T) {
 }
 
 func TestRepoPrefixDoesNotMatch(t *testing.T) {
-	gun := "quay.io/apostille"
+	var gun data.GUN = "docker.io/notary"
 	meta, cs, err := testutils.NewRepoMetadata(gun)
 	require.NoError(t, err)
+	s := notaryStorage.NewMemStorage()
 
-	metaStore := storage.NewMultiplexingStore(notaryStorage.NewMemStorage(), notaryStorage.NewMemStorage(), storage.NewSignerMemoryStore())
-	ctx := context.WithValue(context.Background(), notary.CtxKeyMetaStore, metaStore)
+	ctx := context.WithValue(context.Background(), notary.CtxKeyMetaStore, s)
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, data.ED25519Key)
 
 	snChecksumBytes := sha256.Sum256(meta[data.CanonicalSnapshotRole])
 
-	ac := auth.NewTestingAccessController("quay")
-
 	// successful gets
-	handler := TrustMultiplexerHandler(ac, ctx, cs, nil, nil, []string{"nope"})
+	handler := notaryServer.RootHandler(ctx, nil, cs, nil, nil, []string{"nope"})
 	ts := httptest.NewServer(handler)
 
 	url := fmt.Sprintf("%s/v2/%s/_trust/tuf/", ts.URL, gun)
 	uploader, err := store.NewHTTPStore(url, "", "json", "key", http.DefaultTransport)
 	require.NoError(t, err)
 
-	require.Error(t, uploader.SetMulti(meta))
+	require.Error(t, uploader.SetMulti(data.MetadataRoleMapToStringMap(meta)))
 
 	// update the storage so we don't fail just because the metadata is missing
 	for _, roleName := range data.BaseRoles {
-		require.NoError(t, metaStore.UpdateCurrent(gun, notaryStorage.MetaUpdate{
+		require.NoError(t, s.UpdateCurrent(gun, notaryStorage.MetaUpdate{
 			Role:    roleName,
 			Data:    meta[roleName],
 			Version: 1,
 		}))
 	}
 
-	_, err = uploader.GetSized(data.CanonicalSnapshotRole, notary.MaxDownloadSize)
+	_, err = uploader.GetSized(data.CanonicalSnapshotRole.String(), notary.MaxDownloadSize)
 	require.Error(t, err)
 
 	_, err = uploader.GetSized(
-		tufutils.ConsistentName(data.CanonicalSnapshotRole, snChecksumBytes[:]), notary.MaxDownloadSize)
+		tufutils.ConsistentName(data.CanonicalSnapshotRole.String(), snChecksumBytes[:]), notary.MaxDownloadSize)
 	require.Error(t, err)
 
 	_, err = uploader.GetKey(data.CanonicalTimestampRole)
@@ -160,7 +157,7 @@ func TestGetKeysEndpoint(t *testing.T) {
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
 
-	rolesToStatus := map[string]int{
+	rolesToStatus := map[data.RoleName]int{
 		data.CanonicalTimestampRole: http.StatusOK,
 		data.CanonicalSnapshotRole:  http.StatusOK,
 		data.CanonicalTargetsRole:   http.StatusNotFound,
@@ -378,7 +375,7 @@ func TestRotateKeyEndpoint(t *testing.T) {
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
 
-	rolesToStatus := map[string]int{
+	rolesToStatus := map[data.RoleName]int{
 		data.CanonicalTimestampRole: http.StatusOK,
 		data.CanonicalSnapshotRole:  http.StatusOK,
 		data.CanonicalTargetsRole:   http.StatusNotFound,
@@ -426,8 +423,8 @@ func TestValidationErrorFormat(t *testing.T) {
 	// No snapshot is passed, and the server doesn't have the snapshot key,
 	// so ErrBadHierarchy
 	err = client.SetMulti(map[string][]byte{
-		data.CanonicalRootRole:    rs,
-		data.CanonicalTargetsRole: rt,
+		data.CanonicalRootRole.String():    rs,
+		data.CanonicalTargetsRole.String(): rt,
 	})
 	require.Error(t, err)
 	require.IsType(t, validation.ErrBadHierarchy{}, err)
@@ -436,7 +433,7 @@ func TestValidationErrorFormat(t *testing.T) {
 func TestSigningUserPushNonSignerPullSignerPull(t *testing.T) {
 	trust := testUtils.TrustServiceMock(t)
 	ac := auth.NewTestingAccessController("signer")
-	gun := "quay.io/signingUser/testRepo"
+	gun := data.GUN("quay.io/signingUser/testRepo")
 	server, client := testServerAndClient(t, "quay.io/*", gun, trust, ac)
 	defer server.Close()
 	repo := testUtils.CreateRepo(t, gun, trust)
@@ -457,7 +454,7 @@ func TestSigningUserPushNonSignerPullSignerPull(t *testing.T) {
 func TestSigningUserPushSignerPullNonSignerPull(t *testing.T) {
 	trust := testUtils.TrustServiceMock(t)
 	ac := auth.NewTestingAccessController("signer")
-	gun := "quay.io/signingUser/testRepo"
+	gun := data.GUN("quay.io/signingUser/testRepo")
 	server, client := testServerAndClient(t, "quay.io/*", gun, trust, ac)
 	defer server.Close()
 	repo := testUtils.CreateRepo(t, gun, trust)
@@ -477,7 +474,7 @@ func TestSigningUserPushSignerPullNonSignerPull(t *testing.T) {
 	testUtils.RemoteEqual(t, client, data.CanonicalSnapshotRole, ssJson)
 }
 
-func testServerAndClient(t *testing.T, rootMetaName, gun string, trust signed.CryptoService, ac registryAuth.AccessController) (*httptest.Server, store.RemoteStore) {
+func testServerAndClient(t *testing.T, rootMetaName, gun data.GUN, trust signed.CryptoService, ac registryAuth.AccessController) (*httptest.Server, store.RemoteStore) {
 	signerStore := notaryStorage.NewMemStorage()
 	rootRepo := testUtils.CreateRepo(t, rootMetaName, trust)
 	metaStore := storage.NewMultiplexingStore(signerStore, storage.NewAlternateRootMemStorage(trust, *rootRepo, signerStore), storage.NewSignerMemoryStore())

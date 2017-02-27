@@ -2,10 +2,12 @@
 package storage
 
 import (
+	"sync"
+
 	notaryStorage "github.com/docker/notary/server/storage"
 	"github.com/docker/notary/tuf"
+	"github.com/docker/notary/tuf/data"
 	"github.com/docker/notary/tuf/signed"
-	"sync"
 )
 
 // NewAlternateRootMemStorage instantiates an alternately rooted metadata tree in memory
@@ -32,7 +34,7 @@ func NewSignerMemoryStore() *SignerMemoryStore {
 }
 
 // AddUserAsSigner adds a user to the signing group for a GUN
-func (st *SignerMemoryStore) AddUserAsSigner(user Username, gun GUN) error {
+func (st *SignerMemoryStore) AddUserAsSigner(user Username, gun data.GUN) error {
 	st.lock.Lock()
 	defer st.lock.Unlock()
 	st.signers[SignerKey{user, gun}] = struct{}{}
@@ -40,7 +42,7 @@ func (st *SignerMemoryStore) AddUserAsSigner(user Username, gun GUN) error {
 }
 
 // RemoveUserAsSigner removes a user from the signing group for a GUN
-func (st *SignerMemoryStore) RemoveUserAsSigner(user Username, gun GUN) error {
+func (st *SignerMemoryStore) RemoveUserAsSigner(user Username, gun data.GUN) error {
 	st.lock.Lock()
 	defer st.lock.Unlock()
 	delete(st.signers, SignerKey{user, gun})
@@ -48,7 +50,7 @@ func (st *SignerMemoryStore) RemoveUserAsSigner(user Username, gun GUN) error {
 }
 
 // IsSigner returns whether or not a user is in the group of signers for a GUN
-func (st *SignerMemoryStore) IsSigner(user Username, gun GUN) bool {
+func (st *SignerMemoryStore) IsSigner(user Username, gun data.GUN) bool {
 	st.lock.Lock()
 	defer st.lock.Unlock()
 	_, ok := st.signers[SignerKey{user, gun}]

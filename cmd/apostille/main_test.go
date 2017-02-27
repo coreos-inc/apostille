@@ -142,7 +142,7 @@ func testTrustService(t *testing.T) (signed.CryptoService, error) {
 }
 
 func testAlternateRoot(cs signed.CryptoService) (*tuf.Repo, error) {
-	gun := "quay-root"
+	gun := data.GUN("quay-root")
 
 	rootPublicKey, err := cs.Create(data.CanonicalRootRole, gun, data.ECDSAKey)
 	if err != nil {

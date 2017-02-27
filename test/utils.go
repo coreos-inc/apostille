@@ -1,26 +1,27 @@
 package test
 
 import (
-	"github.com/docker/notary"
-	"github.com/docker/notary/cryptoservice"
-	pb "github.com/docker/notary/proto"
-	"github.com/docker/notary/signer"
-	store "github.com/docker/notary/storage"
-	"github.com/docker/notary/signer/api"
-	"github.com/docker/notary/signer/client"
-	"github.com/docker/notary/trustmanager"
-	"github.com/docker/notary/tuf"
-	"github.com/docker/notary/tuf/data"
-	"github.com/docker/notary/tuf/signed"
-	tufUtils "github.com/docker/notary/tuf/utils"
-	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 	"io/ioutil"
 	"net"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/docker/notary"
+	"github.com/docker/notary/cryptoservice"
+	pb "github.com/docker/notary/proto"
+	"github.com/docker/notary/signer"
+	"github.com/docker/notary/signer/api"
+	"github.com/docker/notary/signer/client"
+	store "github.com/docker/notary/storage"
+	"github.com/docker/notary/trustmanager"
+	"github.com/docker/notary/tuf"
+	"github.com/docker/notary/tuf/data"
+	"github.com/docker/notary/tuf/signed"
 	"github.com/docker/notary/tuf/testutils"
+	tufUtils "github.com/docker/notary/tuf/utils"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 )
 
 var constPass = func(string, string, bool, int) (string, bool, error) {
@@ -83,8 +84,7 @@ func TrustServiceMock(t *testing.T) signed.CryptoService {
 	return trust
 }
 
-func CreateRepo(t *testing.T, gun string, cs signed.CryptoService) *tuf.Repo {
-
+func CreateRepo(t *testing.T, gun data.GUN, cs signed.CryptoService) *tuf.Repo {
 	rootPublicKey, err := cs.Create(data.CanonicalRootRole, gun, data.ECDSAKey)
 	require.NoError(t, err)
 	rootKey, _, err := cs.GetPrivateKey(rootPublicKey.ID())
@@ -142,7 +142,6 @@ func CreateRepo(t *testing.T, gun string, cs signed.CryptoService) *tuf.Repo {
 	return repo
 }
 
-
 func PushRepo(t *testing.T, repo *tuf.Repo, client store.RemoteStore) ([]byte, []byte, []byte, []byte) {
 	r, tg, sn, ts, err := testutils.Sign(repo)
 	require.NoError(t, err)
@@ -150,25 +149,24 @@ func PushRepo(t *testing.T, repo *tuf.Repo, client store.RemoteStore) ([]byte, [
 	require.NoError(t, err)
 
 	err = client.SetMulti(map[string][]byte{
-		data.CanonicalRootRole:      rootJson,
-		data.CanonicalTargetsRole:   targetsJson,
-		data.CanonicalSnapshotRole:  ssJson,
-		data.CanonicalTimestampRole: tsJson,
+		data.CanonicalRootRole.String():      rootJson,
+		data.CanonicalTargetsRole.String():   targetsJson,
+		data.CanonicalSnapshotRole.String():  ssJson,
+		data.CanonicalTimestampRole.String(): tsJson,
 	})
 	require.NoError(t, err)
 
 	return rootJson, targetsJson, ssJson, tsJson
 }
 
-func RemoteEqual(t *testing.T, client store.RemoteStore, role string, metadata []byte) {
-	serverMetaJson, err := client.GetSized(role, -1)
+func RemoteEqual(t *testing.T, client store.RemoteStore, role data.RoleName, metadata []byte) {
+	serverMetaJson, err := client.GetSized(role.String(), -1)
 	require.NoError(t, err)
 	require.Equal(t, metadata, serverMetaJson)
 }
 
-func RemoteNotEqual(t *testing.T, client store.RemoteStore, role string, metadata []byte) {
-	serverMetaJson, err := client.GetSized(role, -1)
+func RemoteNotEqual(t *testing.T, client store.RemoteStore, role data.RoleName, metadata []byte) {
+	serverMetaJson, err := client.GetSized(role.String(), -1)
 	require.NoError(t, err)
 	require.NotEqual(t, metadata, serverMetaJson)
 }
-

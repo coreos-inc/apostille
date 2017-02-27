@@ -24,5 +24,3 @@ COPY integration/ ${NOTARYDIR}
 RUN chmod -R a+rw /go
 
 WORKDIR ${NOTARYDIR}
-
-RUN make ci
