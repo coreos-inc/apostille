@@ -6,6 +6,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	notaryStorage "github.com/docker/notary/server/storage"
+	"github.com/docker/notary/tuf/data"
 )
 
 // MultiplexingMetaStore coordinates serving alternate roots from different metastores
@@ -46,7 +47,7 @@ func (st *MultiplexingStore) AlternateRootMetaStore() notaryStorage.MetaStore {
 
 // UpdateMany updates multiple TUF records at once
 // This updates both the quay root and the signer root
-func (st *MultiplexingStore) UpdateMany(gun string, updates []notaryStorage.MetaUpdate) error {
+func (st *MultiplexingStore) UpdateMany(gun data.GUN, updates []notaryStorage.MetaUpdate) error {
 	st.lock.Lock()
 	defer st.lock.Unlock()
 
@@ -67,35 +68,35 @@ func (st *MultiplexingStore) UpdateMany(gun string, updates []notaryStorage.Meta
 // Below methods simply proxy to the underlying store, but lock on the containing store
 
 // UpdateCurrent updates the meta data for a specific role
-func (st *MultiplexingStore) UpdateCurrent(gun string, update notaryStorage.MetaUpdate) error {
+func (st *MultiplexingStore) UpdateCurrent(gun data.GUN, update notaryStorage.MetaUpdate) error {
 	st.lock.Lock()
 	defer st.lock.Unlock()
 	return st.signerRootMetaStore.UpdateCurrent(gun, update)
 }
 
 // GetCurrent returns the create/update date metadata for a given role, under a GUN.
-func (st *MultiplexingStore) GetCurrent(gun, role string) (*time.Time, []byte, error) {
+func (st *MultiplexingStore) GetCurrent(gun data.GUN, role data.RoleName) (*time.Time, []byte, error) {
 	st.lock.Lock()
 	defer st.lock.Unlock()
 	return st.signerRootMetaStore.GetCurrent(gun, role)
 }
 
 // GetChecksum returns the create/update date and metadata for a given role, under a GUN.
-func (st *MultiplexingStore) GetChecksum(gun, role, checksum string) (*time.Time, []byte, error) {
+func (st *MultiplexingStore) GetChecksum(gun data.GUN, role data.RoleName, checksum string) (*time.Time, []byte, error) {
 	st.lock.Lock()
 	defer st.lock.Unlock()
 	return st.signerRootMetaStore.GetChecksum(gun, role, checksum)
 }
 
 // GetVersion returns the create/update date and metadata for a given role, under a GUN.
-func (st *MultiplexingStore) GetVersion(gun, tufRole string, version int) (created *time.Time, data []byte, err error) {
+func (st *MultiplexingStore) GetVersion(gun data.GUN, tufRole data.RoleName, version int) (created *time.Time, data []byte, err error) {
 	st.lock.Lock()
 	defer st.lock.Unlock()
 	return st.signerRootMetaStore.GetVersion(gun, tufRole, version)
 }
 
 // Delete deletes all the metadata for a given GUN
-func (st *MultiplexingStore) Delete(gun string) error {
+func (st *MultiplexingStore) Delete(gun data.GUN) error {
 	st.lock.Lock()
 	defer st.lock.Unlock()
 	return st.signerRootMetaStore.Delete(gun)

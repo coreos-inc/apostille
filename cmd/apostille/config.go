@@ -259,7 +259,7 @@ func getCacheConfig(configuration *viper.Viper) (current, consistent utils.Cache
 }
 
 func generateQuayRoot(cs signed.CryptoService) (*tuf.Repo, error) {
-	gun := "quay.io/*"
+	gun := data.GUN("quay.io/*")
 
 	rootPublicKey, err := cs.Create(data.CanonicalRootRole, gun, data.ECDSAKey)
 	if err != nil {

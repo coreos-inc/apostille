@@ -2,10 +2,12 @@ package storage
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/Sirupsen/logrus"
 	notaryStorage "github.com/docker/notary/server/storage"
+	"github.com/docker/notary/tuf/data"
 	"github.com/jinzhu/gorm"
-	"time"
 )
 
 var SignerTableName = func() string {
@@ -37,7 +39,7 @@ func NewSignerSQLStorage(gormDB gorm.DB) *SignerSQLStorage {
 }
 
 // AddUserAsSigner adds a user to the signing group for a GUN
-func (db *SignerSQLStorage) AddUserAsSigner(user Username, gun GUN) error {
+func (db *SignerSQLStorage) AddUserAsSigner(user Username, gun data.GUN) error {
 	if user == "" {
 		logrus.Info("not adding user as signer, username empty")
 		return nil
@@ -47,14 +49,14 @@ func (db *SignerSQLStorage) AddUserAsSigner(user Username, gun GUN) error {
 }
 
 // RemoveUserAsSigner removes a user from the signing group for a GUN
-func (db *SignerSQLStorage) RemoveUserAsSigner(user Username, gun GUN) error {
+func (db *SignerSQLStorage) RemoveUserAsSigner(user Username, gun data.GUN) error {
 	signer := Signer{Signer: string(user), Gun: string(gun)}
 	q := db.Unscoped().Where(&signer).Delete(Signer{})
 	return q.Error
 }
 
 // IsSigner returns whether or not a user is in the group of signers for a GUN
-func (db *SignerSQLStorage) IsSigner(user Username, gun GUN) bool {
+func (db *SignerSQLStorage) IsSigner(user Username, gun data.GUN) bool {
 	var row Signer
 	q := db.Where(&Signer{Gun: string(gun), Signer: string(user)}).Limit(1).First(&row)
 	if q.Error != nil {
@@ -68,77 +70,74 @@ func (db *SignerSQLStorage) IsSigner(user Username, gun GUN) bool {
 // See server/storage/sqldb.go
 type NamespacedSQLStorage struct {
 	notaryStorage.SQLStorage
-	tufFileTableNameFunc    func() string
-	changefeedTableNameFunc func() string
+	tufFileTableName    string
+	changefeedTableName string
 }
 
 // NewSQLStorage is a convenience method to create a NamespacedSQLStorage
 func NewNamespacedSQLStorage(sqlStore *notaryStorage.SQLStorage, namespace string) (*NamespacedSQLStorage, error) {
+	var tufTableName string
+	var changeTableName string
+	if namespace != "" {
+		tufTableName = fmt.Sprintf("%s_tuf_files", namespace)
+		changeTableName = fmt.Sprintf("%s_changefeed", namespace)
+	} else {
+		tufTableName = "tuf_files"
+		changeTableName = "changefeed"
+	}
 	return &NamespacedSQLStorage{
-		SQLStorage: *sqlStore,
-		tufFileTableNameFunc: func() string {
-			if namespace != "" {
-				return fmt.Sprintf("%s_tuf_files", namespace)
-			} else {
-				return "tuf_files"
-			}
-		},
-		changefeedTableNameFunc: func() string {
-			if namespace != "" {
-				return fmt.Sprintf("%s_changefeed", namespace)
-			} else {
-				return "changefeed"
-			}
-		},
+		SQLStorage:          *sqlStore,
+		tufFileTableName:    tufTableName,
+		changefeedTableName: changeTableName,
 	}, nil
 }
 
 // UpdateCurrent updates a single TUF.
-func (db *NamespacedSQLStorage) UpdateCurrent(gun string, update notaryStorage.MetaUpdate) error {
-	notaryStorage.TUFFileTableName = db.tufFileTableNameFunc
-	notaryStorage.ChangefeedTableName = db.changefeedTableNameFunc
+func (db *NamespacedSQLStorage) UpdateCurrent(gun data.GUN, update notaryStorage.MetaUpdate) error {
+	notaryStorage.TUFFileTableName = db.tufFileTableName
+	notaryStorage.ChangefeedTableName = db.changefeedTableName
 	return db.SQLStorage.UpdateCurrent(gun, update)
 }
 
 // UpdateMany atomically updates many TUF records in a single transaction
-func (db *NamespacedSQLStorage) UpdateMany(gun string, updates []notaryStorage.MetaUpdate) error {
-	notaryStorage.TUFFileTableName = db.tufFileTableNameFunc
-	notaryStorage.ChangefeedTableName = db.changefeedTableNameFunc
+func (db *NamespacedSQLStorage) UpdateMany(gun data.GUN, updates []notaryStorage.MetaUpdate) error {
+	notaryStorage.TUFFileTableName = db.tufFileTableName
+	notaryStorage.ChangefeedTableName = db.changefeedTableName
 	return db.SQLStorage.UpdateMany(gun, updates)
 }
 
 // GetCurrent gets a specific TUF record
-func (db *NamespacedSQLStorage) GetCurrent(gun, tufRole string) (*time.Time, []byte, error) {
-	notaryStorage.TUFFileTableName = db.tufFileTableNameFunc
-	notaryStorage.ChangefeedTableName = db.changefeedTableNameFunc
+func (db *NamespacedSQLStorage) GetCurrent(gun data.GUN, tufRole data.RoleName) (*time.Time, []byte, error) {
+	notaryStorage.TUFFileTableName = db.tufFileTableName
+	notaryStorage.ChangefeedTableName = db.changefeedTableName
 	return db.SQLStorage.GetCurrent(gun, tufRole)
 }
 
 // GetChecksum gets a specific TUF record by its hex checksum
-func (db *NamespacedSQLStorage) GetChecksum(gun, tufRole, checksum string) (*time.Time, []byte, error) {
-	notaryStorage.TUFFileTableName = db.tufFileTableNameFunc
-	notaryStorage.ChangefeedTableName = db.changefeedTableNameFunc
+func (db *NamespacedSQLStorage) GetChecksum(gun data.GUN, tufRole data.RoleName, checksum string) (*time.Time, []byte, error) {
+	notaryStorage.TUFFileTableName = db.tufFileTableName
+	notaryStorage.ChangefeedTableName = db.changefeedTableName
 	return db.SQLStorage.GetChecksum(gun, tufRole, checksum)
 }
 
 // Delete deletes all the records for a specific GUN - we have to do a hard delete using Unscoped
 // otherwise we can't insert for that GUN again
-func (db *NamespacedSQLStorage) Delete(gun string) error {
-	notaryStorage.TUFFileTableName = db.tufFileTableNameFunc
-	notaryStorage.ChangefeedTableName = db.changefeedTableNameFunc
+func (db *NamespacedSQLStorage) Delete(gun data.GUN) error {
+	notaryStorage.TUFFileTableName = db.tufFileTableName
+	notaryStorage.ChangefeedTableName = db.changefeedTableName
 	return db.SQLStorage.Delete(gun)
 }
 
 // CheckHealth asserts that the <namespace>_tuf_files table is present
 func (db *NamespacedSQLStorage) CheckHealth() error {
-	notaryStorage.TUFFileTableName = db.tufFileTableNameFunc
-	notaryStorage.ChangefeedTableName = db.changefeedTableNameFunc
+	notaryStorage.TUFFileTableName = db.tufFileTableName
+	notaryStorage.ChangefeedTableName = db.changefeedTableName
 	return db.SQLStorage.CheckHealth()
 }
 
 // GetChanges returns up to pageSize changes starting from changeID.
 func (db *NamespacedSQLStorage) GetChanges(changeID string, records int, filterName string) ([]notaryStorage.Change, error) {
-	notaryStorage.TUFFileTableName = db.tufFileTableNameFunc
-	notaryStorage.ChangefeedTableName = db.changefeedTableNameFunc
+	notaryStorage.TUFFileTableName = db.tufFileTableName
+	notaryStorage.ChangefeedTableName = db.changefeedTableName
 	return db.SQLStorage.GetChanges(changeID, records, filterName)
 }

@@ -9,14 +9,14 @@ import (
 // testingAccessController implements the auth.AccessController interface.
 type TestingAccessController struct {
 	TUFRoot string
-	Allow    bool
+	Allow   bool
 }
 
 // NewTestingAccessController creates a testingAccessController, only for use in tests
 func NewTestingAccessController(tufRoot string) *TestingAccessController {
 	return &TestingAccessController{
 		TUFRoot: tufRoot,
-		Allow:    true, // by default, all requests are authorized
+		Allow:   true, // by default, all requests are authorized
 	}
 }
 
