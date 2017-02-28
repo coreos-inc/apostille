@@ -29,6 +29,7 @@ RUN set -ex \
         libc-dev \
         ca-certificates \
         make \
+        curl \
 	\
 	&& export GOROOT_BOOTSTRAP="$(go env GOROOT)" \
 	\

@@ -30,15 +30,29 @@ jobs:
       - get: apostille-pull-request
         trigger: true
         version: every
+      - task: tag
+        config:
+          image_resource:
+            type: docker-image
+            source:
+              repository: quay.io/quay/docker-git
+          platform: linux
+          outputs:
+            - name: tag
+          inputs:
+            - name: apostille-pull-request
+          run:
+            path: sh
+            args: ["-c", "cd apostille-pull-request && \
+                          echo unit-$(git rev-parse --short --verify HEAD) > ../tag/name"]
       - put: build-image
-        params: {build: apostille-pull-request, tag: apostille-pull-request/unit-tag}
+        params: {build: apostille-pull-request, tag: tag/name}
       - put: apostille-pull-request
         params:
           path: apostille-pull-request
           context: unit
           status: pending
       - get: build-image
-        params: {tag: "unit"}
       - task: unit
         image: build-image
         file: apostille-pull-request/ci/tasks/unit.yaml
@@ -61,15 +75,29 @@ jobs:
       - get: apostille-pull-request
         trigger: true
         version: every
+      - task: tag
+        config:
+          image_resource:
+            type: docker-image
+            source:
+              repository: quay.io/quay/docker-git
+          platform: linux
+          outputs:
+            - name: tag
+          inputs:
+            - name: apostille-pull-request
+          run:
+            path: sh
+            args: ["-c", "cd apostille-pull-request && \
+                          echo postgres-$(git rev-parse --short --verify HEAD) > ../tag/name"]
       - put: build-image
-        params: {build: apostille-pull-request, tag: apostille-pull-request/postgres-tag}
+        params: {build: apostille-pull-request, tag: tag/name}
       - put: apostille-pull-request
         params:
           path: apostille-pull-request
           context: postgres
           status: pending
       - get: build-image
-        params: {tag: "postgres"}
       - task: postgres
         privileged: true
         image: build-image
@@ -92,15 +120,29 @@ jobs:
       - get: apostille-pull-request
         trigger: true
         version: every
+      - task: tag
+        config:
+          image_resource:
+            type: docker-image
+            source:
+              repository: quay.io/quay/docker-git
+          platform: linux
+          outputs:
+            - name: tag
+          inputs:
+            - name: apostille-pull-request
+          run:
+            path: sh
+            args: ["-c", "cd apostille-pull-request && \
+                          echo mysql-$(git rev-parse --short --verify HEAD) > ../tag/name"]
       - put: build-image
-        params: {build: apostille-pull-request, tag: apostille-pull-request/mysql-tag}
+        params: {build: apostille-pull-request, tag: tag/name}
       - put: apostille-pull-request
         params:
           path: apostille-pull-request
           context: mysql
           status: pending
       - get: build-image
-        params: {tag: "mysql"}
       - task: postgres
         privileged: true
         image: build-image
