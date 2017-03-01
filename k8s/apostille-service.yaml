@@ -1,0 +1,16 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: apostille
+  namespace: apostille
+  labels:
+    app: apostille
+spec:
+  ports:
+    - name: default
+      protocol: TCP
+      port: 4443
+      targetPort: 4443
+  selector:
+    app: apostille
+  type: ClusterIP
