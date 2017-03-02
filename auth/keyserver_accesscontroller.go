@@ -1,21 +1,22 @@
 package auth
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
-	"time"
-	"encoding/json"
 	"sync"
-	"encoding/base64"
+	"time"
+
+	"errors"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/distribution/context"
 	registryAuth "github.com/docker/distribution/registry/auth"
 	registryToken "github.com/docker/distribution/registry/auth/token"
 	"github.com/docker/libtrust"
-	"errors"
 )
 
 const (
@@ -281,7 +282,7 @@ func (ac *keyserverAccessController) updateKeys() error {
 	ac.keysLock.Lock()
 	ac.keys = keys
 	ac.keysLock.Unlock()
-	logrus.Infof("successfully fetched JWK Set")
+	logrus.Infof("successfully fetched JWK Set: %d keys", len(keys))
 	return nil
 }
 
