@@ -27,6 +27,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 
+	"os"
+
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 )
@@ -253,7 +255,7 @@ func getCacheConfig(configuration *viper.Viper) (current, consistent utils.Cache
 }
 
 func generateQuayRoot(cs signed.CryptoService) (*tuf.Repo, error) {
-	gun := data.GUN("quay.io/*")
+	gun := data.GUN(os.Getenv("QUAY_ROOT"))
 
 	rootPublicKey, err := cs.Create(data.CanonicalRootRole, gun, data.ECDSAKey)
 	if err != nil {
