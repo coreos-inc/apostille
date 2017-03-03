@@ -70,7 +70,7 @@ func Run(ctx context.Context, conf Config) error {
 		}
 	} else if conf.AuthMethod == "testing" {
 		logrus.Warn("Test Auth config enabled - all requests will be authorized as user 'test_user'")
-		ac = auth.NewTestingAccessController("test_user")
+		ac = auth.NewTestingAccessController("signer")
 	} else {
 		return fmt.Errorf("No auth config supplied - use 'testing' if mock auth is desired")
 	}
