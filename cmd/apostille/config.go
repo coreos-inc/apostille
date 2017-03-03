@@ -92,7 +92,6 @@ func grpcTLS(configuration *viper.Viper) (*tls.Config, error) {
 func getStore(configuration *viper.Viper, trust signed.CryptoService, rootRepo *tuf.Repo, hRegister healthRegister) (
 	notaryStorage.MetaStore, error) {
 	var store notaryStorage.MetaStore
-	var alternateRootStore notaryStorage.MetaStore
 
 	backend := configuration.GetString("storage.backend")
 	logrus.Infof("Using %s backend", backend)
@@ -100,46 +99,21 @@ func getStore(configuration *viper.Viper, trust signed.CryptoService, rootRepo *
 	switch backend {
 	case notary.MemoryBackend:
 		store = notaryStorage.NewMemStorage()
-		logrus.Info(store)
-		alternateRootStore = storage.NewAlternateRootMemStorage(trust, *rootRepo, store)
-		logrus.Info(alternateRootStore)
 	case notary.MySQLBackend, notary.SQLiteBackend, notary.PostgresBackend:
 		storeConfig, err := utils.ParseSQLStorage(configuration)
 		if err != nil {
 			return nil, err
 		}
-
-		// Base SQL store used to talk to DB
 		s, err := notaryStorage.NewSQLStorage(storeConfig.Backend, storeConfig.Source)
 		if err != nil {
 			return nil, fmt.Errorf("Error starting %s driver: %s", backend, err.Error())
 		}
-
-		// Primary Store - no namespace
-		nps, err := storage.NewNamespacedSQLStorage(s, "")
-		if err != nil {
-			return nil, fmt.Errorf("Error starting namespaced primary %s driver: %s", backend, err.Error())
-		}
-		store = notaryStorage.NewTUFMetaStorage(nps)
-
-		// SQLStore namespaced with "alternate"
-		ns, err := storage.NewNamespacedSQLStorage(s, "alternate")
-		if err != nil {
-			return nil, fmt.Errorf("Error starting namespaced alternate %s driver: %s", backend, err.Error())
-		}
-
-		// Alternate Root Store
-		as, err := storage.NewAlternateRootStorage(trust, ns, *rootRepo, nps)
-		if err != nil {
-			return nil, fmt.Errorf("Error starting alternate %s driver: %s", backend, err.Error())
-		}
-		alternateRootStore = notaryStorage.NewTUFMetaStorage(as)
+		store = *notaryStorage.NewTUFMetaStorage(s)
 		hRegister("DB operational", time.Minute, s.CheckHealth)
-
 	default:
 		return nil, fmt.Errorf("%s is not a supported storage backend", backend)
 	}
-	return storage.NewMultiplexingStore(store, alternateRootStore), nil
+	return storage.NewMultiplexingStore(store, trust, *rootRepo, storage.SignerRoot, storage.AlternateRoot, "targets/releases"), nil
 }
 
 type signerFactory func(hostname, port string, tlsConfig *tls.Config) (*client.NotarySigner, error)

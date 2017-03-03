@@ -102,7 +102,7 @@ func GetMetadataHandler(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		"tufRoot": tufRootSigner,
 	}, "gun", "tufRoot")
 
-	store, ok := s.(storage.MultiplexingMetaStore)
+	store, ok := s.(*storage.MultiplexingStore)
 	if !ok {
 		logger.Error("500 GET: no storage exists")
 		return errors.ErrNoStorage.WithDetail(nil)
@@ -113,10 +113,10 @@ func GetMetadataHandler(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	switch tufRootSigner {
 	case "signer":
 		logger.Info("request user is a signer for this repo")
-		ctx = context.WithValue(ctx, notary.CtxKeyMetaStore, store.SignerRootMetaStore())
+		ctx = context.WithValue(ctx, notary.CtxKeyMetaStore, store.SignerChannelMetaStore)
 	case "quay":
 		logger.Info("request user is not signer for this repo, will be served shared root")
-		ctx = context.WithValue(ctx, notary.CtxKeyMetaStore, store.AlternateRootMetaStore())
+		ctx = context.WithValue(ctx, notary.CtxKeyMetaStore, store.AlternateChannelMetaStore)
 	default:
 		return errors.ErrMetadataNotFound.WithDetail(fmt.Sprintf("Invalid tuf root signer %s", tufRootSigner))
 	}

@@ -105,9 +105,10 @@ func TestRepoPrefixDoesNotMatch(t *testing.T) {
 	// update the storage so we don't fail just because the metadata is missing
 	for _, roleName := range data.BaseRoles {
 		require.NoError(t, s.UpdateCurrent(gun, notaryStorage.MetaUpdate{
-			Role:    roleName,
-			Data:    meta[roleName],
-			Version: 1,
+			Role:     roleName,
+			Data:     meta[roleName],
+			Version:  1,
+			Channels: []*notaryStorage.Channel{&storage.SignerRoot},
 		}))
 	}
 
@@ -145,7 +146,10 @@ func TestMetricsEndpoint(t *testing.T) {
 
 // GetKeys supports only the timestamp and snapshot key endpoints
 func TestGetKeysEndpoint(t *testing.T) {
-	metaStore := storage.NewMultiplexingStore(notaryStorage.NewMemStorage(), notaryStorage.NewMemStorage())
+	trust := testUtils.TrustServiceMock(t)
+	rootRepo := testUtils.CreateRepo(t, "quay-root", trust)
+	metaStore := storage.NewMultiplexingStore(notaryStorage.NewMemStorage(), trust, *rootRepo, storage.SignerRoot, storage.AlternateRoot, "targets/releases")
+
 	ctx := context.WithValue(
 		context.Background(), notary.CtxKeyMetaStore, metaStore)
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, data.ED25519Key)
@@ -177,7 +181,9 @@ func TestGetKeysEndpoint(t *testing.T) {
 // More detailed tests for this path including negative
 // tests are located in /server/handlers/
 func TestGetRoleByHash(t *testing.T) {
-	metaStore := storage.NewMultiplexingStore(notaryStorage.NewMemStorage(), notaryStorage.NewMemStorage())
+	trust := testUtils.TrustServiceMock(t)
+	rootRepo := testUtils.CreateRepo(t, "quay-root", trust)
+	metaStore := storage.NewMultiplexingStore(notaryStorage.NewMemStorage(), trust, *rootRepo, storage.SignerRoot, storage.AlternateRoot, "targets/releases")
 	ts := data.SignedTimestamp{
 		Signatures: make([]data.Signature, 0),
 		Signed: data.Timestamp{
@@ -191,9 +197,10 @@ func TestGetRoleByHash(t *testing.T) {
 	j, err := json.Marshal(&ts)
 	require.NoError(t, err)
 	err = metaStore.UpdateMany("gun", []notaryStorage.MetaUpdate{{
-		Role:    data.CanonicalTimestampRole,
-		Version: 1,
-		Data:    j,
+		Role:     data.CanonicalTimestampRole,
+		Version:  1,
+		Data:     j,
+		Channels: []*notaryStorage.Channel{&storage.SignerRoot},
 	}})
 	require.NoError(t, err)
 	checksumBytes := sha256.Sum256(j)
@@ -214,9 +221,10 @@ func TestGetRoleByHash(t *testing.T) {
 	newTS, err := json.Marshal(&ts)
 	require.NoError(t, err)
 	metaStore.UpdateMany("gun", []notaryStorage.MetaUpdate{{
-		Role:    data.CanonicalTimestampRole,
-		Version: 2,
-		Data:    newTS,
+		Role:     data.CanonicalTimestampRole,
+		Version:  2,
+		Data:     newTS,
+		Channels: []*notaryStorage.Channel{&storage.SignerRoot},
 	}})
 
 	ctx := context.WithValue(
@@ -246,7 +254,9 @@ func TestGetRoleByHash(t *testing.T) {
 // More detailed tests for this path including negative
 // tests are located in /server/handlers/
 func TestGetRoleByVersion(t *testing.T) {
-	metaStore := storage.NewMultiplexingStore(notaryStorage.NewMemStorage(), notaryStorage.NewMemStorage())
+	trust := testUtils.TrustServiceMock(t)
+	rootRepo := testUtils.CreateRepo(t, "quay-root", trust)
+	metaStore := storage.NewMultiplexingStore(notaryStorage.NewMemStorage(), trust, *rootRepo, storage.SignerRoot, storage.AlternateRoot, "targets/releases")
 
 	ts := data.SignedTimestamp{
 		Signatures: make([]data.Signature, 0),
@@ -261,9 +271,10 @@ func TestGetRoleByVersion(t *testing.T) {
 	j, err := json.Marshal(&ts)
 	require.NoError(t, err)
 	metaStore.UpdateMany("gun", []notaryStorage.MetaUpdate{{
-		Role:    data.CanonicalTimestampRole,
-		Version: 1,
-		Data:    j,
+		Role:     data.CanonicalTimestampRole,
+		Version:  1,
+		Data:     j,
+		Channels: []*notaryStorage.Channel{&storage.SignerRoot},
 	}})
 
 	// create and add a newer timestamp. We're going to try and request
@@ -281,9 +292,10 @@ func TestGetRoleByVersion(t *testing.T) {
 	newTS, err := json.Marshal(&ts)
 	require.NoError(t, err)
 	metaStore.UpdateMany("gun", []notaryStorage.MetaUpdate{{
-		Role:    data.CanonicalTimestampRole,
-		Version: 2,
-		Data:    newTS,
+		Role:     data.CanonicalTimestampRole,
+		Version:  2,
+		Data:     newTS,
+		Channels: []*notaryStorage.Channel{&storage.SignerRoot},
 	}})
 
 	ctx := context.WithValue(
@@ -313,7 +325,10 @@ func TestGetRoleByVersion(t *testing.T) {
 // More detailed tests for this path including negative
 // tests are located in /server/handlers/
 func TestGetCurrentRole(t *testing.T) {
-	metaStore := storage.NewMultiplexingStore(notaryStorage.NewMemStorage(), notaryStorage.NewMemStorage())
+	trust := testUtils.TrustServiceMock(t)
+	rootRepo := testUtils.CreateRepo(t, "quay-root", trust)
+	metaStore := storage.NewMultiplexingStore(notaryStorage.NewMemStorage(), trust, *rootRepo, storage.SignerRoot, storage.AlternateRoot, "targets/releases")
+
 	metadata, _, err := testutils.NewRepoMetadata("gun")
 	require.NoError(t, err)
 
@@ -364,7 +379,10 @@ func verifyGetResponse(t *testing.T, r *http.Response, expectedBytes []byte) {
 
 // RotateKey supports only timestamp and snapshot key rotation
 func TestRotateKeyEndpoint(t *testing.T) {
-	metaStore := storage.NewMultiplexingStore(notaryStorage.NewMemStorage(), notaryStorage.NewMemStorage())
+	trust := testUtils.TrustServiceMock(t)
+	rootRepo := testUtils.CreateRepo(t, "quay-root", trust)
+	metaStore := storage.NewMultiplexingStore(notaryStorage.NewMemStorage(), trust, *rootRepo, storage.SignerRoot, storage.AlternateRoot, "targets/releases")
+
 	ctx := context.WithValue(
 		context.Background(), notary.CtxKeyMetaStore, metaStore)
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, data.ED25519Key)
@@ -394,7 +412,10 @@ func TestRotateKeyEndpoint(t *testing.T) {
 }
 
 func TestValidationErrorFormat(t *testing.T) {
-	metaStore := storage.NewMultiplexingStore(notaryStorage.NewMemStorage(), notaryStorage.NewMemStorage())
+	trust := testUtils.TrustServiceMock(t)
+	rootRepo := testUtils.CreateRepo(t, "quay-root", trust)
+	metaStore := storage.NewMultiplexingStore(notaryStorage.NewMemStorage(), trust, *rootRepo, storage.SignerRoot, storage.AlternateRoot, "targets/releases")
+
 	ctx := context.WithValue(
 		context.Background(), notary.CtxKeyMetaStore, metaStore)
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, data.ED25519Key)
@@ -475,9 +496,8 @@ func TestSigningUserPushSignerPullNonSignerPull(t *testing.T) {
 }
 
 func testServerAndClient(t *testing.T, rootMetaName, gun data.GUN, trust signed.CryptoService, ac registryAuth.AccessController) (*httptest.Server, store.RemoteStore) {
-	signerStore := notaryStorage.NewMemStorage()
 	rootRepo := testUtils.CreateRepo(t, rootMetaName, trust)
-	metaStore := storage.NewMultiplexingStore(signerStore, storage.NewAlternateRootMemStorage(trust, *rootRepo, signerStore))
+	metaStore := storage.NewMultiplexingStore(notaryStorage.NewMemStorage(), trust, *rootRepo, storage.SignerRoot, storage.AlternateRoot, "targets/releases")
 	ctx := context.WithValue(context.Background(), notary.CtxKeyMetaStore, metaStore)
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, data.ED25519Key)
 

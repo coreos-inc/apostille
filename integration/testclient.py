@@ -85,7 +85,7 @@ class Client(object):
         self.notary_server = notary_server
         self.username_passwd = username_passwd
 
-        binary = os.path.join(reporoot(), "notary", "bin", "notary")
+        binary = "notary"
         self.env = os.environ.copy()
         self.env.update({
             "NOTARY_ROOT_PASSPHRASE": "root_ponies",
@@ -307,6 +307,13 @@ def run():
     wait_for_server(server, 120)
 
     Tester(repo_name, Client(server, username_passwd)).run()
+
+    try:
+        with open("/test_output/SUCCESS", 'wb') as successFile:
+            successFile.write("OK")
+        os.chmod("/test_output/SUCCESS", 0o777)
+    except IOError:
+        pass
 
 if __name__ == "__main__":
     run()

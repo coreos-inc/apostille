@@ -35,6 +35,8 @@ services:
       context: .
       dockerfile: client.Dockerfile
     command: python testclient.py
+    volumes:
+      - ./test_output:/test_output
     networks:
       - mdb
       - srv
