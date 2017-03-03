@@ -11,6 +11,7 @@ import (
 	store "github.com/docker/notary/storage"
 	"github.com/docker/notary/tuf"
 	"github.com/docker/notary/tuf/data"
+	"github.com/docker/notary/tuf/signed"
 	"github.com/docker/notary/tuf/utils"
 )
 
@@ -26,7 +27,7 @@ func getRemoteStore(baseURL string, gun data.GUN, rt http.RoundTripper) (store.R
 	if err != nil {
 		return store.OfflineStore{}, err
 	}
-	return s, err
+	return s, nil
 }
 
 func applyChangelist(repo *tuf.Repo, invalid *tuf.Repo, cl changelist.Changelist) error {
@@ -218,11 +219,7 @@ func warnRolesNearExpiry(r *tuf.Repo) {
 }
 
 // Fetches a public key from a remote store, given a gun and role
-func getRemoteKey(url string, gun data.GUN, role data.RoleName, rt http.RoundTripper) (data.PublicKey, error) {
-	remote, err := getRemoteStore(url, gun, rt)
-	if err != nil {
-		return nil, err
-	}
+func getRemoteKey(role data.RoleName, remote store.RemoteStore) (data.PublicKey, error) {
 	rawPubKey, err := remote.GetKey(role)
 	if err != nil {
 		return nil, err
@@ -237,11 +234,7 @@ func getRemoteKey(url string, gun data.GUN, role data.RoleName, rt http.RoundTri
 }
 
 // Rotates a private key in a remote store and returns the public key component
-func rotateRemoteKey(url string, gun data.GUN, role data.RoleName, rt http.RoundTripper) (data.PublicKey, error) {
-	remote, err := getRemoteStore(url, gun, rt)
-	if err != nil {
-		return nil, err
-	}
+func rotateRemoteKey(role data.RoleName, remote store.RemoteStore) (data.PublicKey, error) {
 	rawPubKey, err := remote.RotateKey(role)
 	if err != nil {
 		return nil, err
@@ -275,4 +268,39 @@ func serializeCanonicalRole(tufRepo *tuf.Repo, role data.RoleName, extraSigningK
 	}
 
 	return json.Marshal(s)
+}
+
+func getAllPrivKeys(rootKeyIDs []string, cryptoService signed.CryptoService) ([]data.PrivateKey, error) {
+	if cryptoService == nil {
+		return nil, fmt.Errorf("no crypto service available to get private keys from")
+	}
+
+	privKeys := make([]data.PrivateKey, 0, len(rootKeyIDs))
+	for _, keyID := range rootKeyIDs {
+		privKey, _, err := cryptoService.GetPrivateKey(keyID)
+		if err != nil {
+			return nil, err
+		}
+		privKeys = append(privKeys, privKey)
+	}
+	if len(privKeys) == 0 {
+		var rootKeyID string
+		rootKeyList := cryptoService.ListKeys(data.CanonicalRootRole)
+		if len(rootKeyList) == 0 {
+			rootPublicKey, err := cryptoService.Create(data.CanonicalRootRole, "", data.ECDSAKey)
+			if err != nil {
+				return nil, err
+			}
+			rootKeyID = rootPublicKey.ID()
+		} else {
+			rootKeyID = rootKeyList[0]
+		}
+		privKey, _, err := cryptoService.GetPrivateKey(rootKeyID)
+		if err != nil {
+			return nil, err
+		}
+		privKeys = append(privKeys, privKey)
+	}
+
+	return privKeys, nil
 }

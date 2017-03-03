@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -143,6 +144,7 @@ func (t *tufCommander) AddToCommand(cmd *cobra.Command) {
 	cmd.AddCommand(cmdReset)
 
 	cmd.AddCommand(cmdTUFPublishTemplate.ToCommand(t.tufPublish))
+
 	cmd.AddCommand(cmdTUFLookupTemplate.ToCommand(t.tufLookup))
 
 	cmdTUFList := cmdTUFListTemplate.ToCommand(t.tufList)
@@ -359,11 +361,6 @@ func (t *tufCommander) tufDeleteGUN(cmd *cobra.Command, args []string) error {
 
 	gun := data.GUN(args[0])
 
-	trustPin, err := getTrustPinning(config)
-	if err != nil {
-		return err
-	}
-
 	// Only initialize a roundtripper if we get the remote flag
 	var rt http.RoundTripper
 	var remoteDeleteInfo string
@@ -375,20 +372,48 @@ func (t *tufCommander) tufDeleteGUN(cmd *cobra.Command, args []string) error {
 		remoteDeleteInfo = " and remote"
 	}
 
-	nRepo, err := notaryclient.NewFileCachedNotaryRepository(
-		config.GetString("trust_dir"), gun, getRemoteTrustServer(config), rt, t.retriever, trustPin)
-
-	if err != nil {
-		return err
-	}
-
 	cmd.Printf("Deleting trust data for repository %s\n", gun)
 
-	if err := nRepo.DeleteTrustData(t.deleteRemote); err != nil {
+	if err := notaryclient.DeleteTrustData(
+		config.GetString("trust_dir"),
+		gun,
+		getRemoteTrustServer(config),
+		rt,
+		t.deleteRemote,
+	); err != nil {
 		return err
 	}
 	cmd.Printf("Successfully deleted local%s trust data for repository %s\n", remoteDeleteInfo, gun)
 	return nil
+}
+
+func importRootKey(cmd *cobra.Command, rootKey string, nRepo *notaryclient.NotaryRepository, retriever notary.PassRetriever) ([]string, error) {
+	var rootKeyList []string
+
+	if rootKey != "" {
+		privKey, err := readKey(data.CanonicalRootRole, rootKey, retriever)
+		if err != nil {
+			return nil, err
+		}
+		err = nRepo.CryptoService.AddKey(data.CanonicalRootRole, "", privKey)
+		if err != nil {
+			return nil, fmt.Errorf("Error importing key: %v", err)
+		}
+		rootKeyList = []string{privKey.ID()}
+	} else {
+		rootKeyList = nRepo.CryptoService.ListKeys(data.CanonicalRootRole)
+	}
+
+	if len(rootKeyList) > 0 {
+		// Chooses the first root key available, which is initialization specific
+		// but should return the HW one first.
+		rootKeyID := rootKeyList[0]
+		cmd.Printf("Root key found, using: %s\n", rootKeyID)
+
+		return []string{rootKeyID}, nil
+	}
+
+	return []string{}, nil
 }
 
 func (t *tufCommander) tufInit(cmd *cobra.Command, args []string) error {
@@ -419,38 +444,12 @@ func (t *tufCommander) tufInit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var rootKeyList []string
-
-	if t.rootKey != "" {
-		privKey, err := readKey(data.CanonicalRootRole, t.rootKey, t.retriever)
-		if err != nil {
-			return err
-		}
-		err = nRepo.CryptoService.AddKey(data.CanonicalRootRole, "", privKey)
-		if err != nil {
-			return fmt.Errorf("Error importing key: %v", err)
-		}
-		rootKeyList = []string{privKey.ID()}
-	} else {
-		rootKeyList = nRepo.CryptoService.ListKeys(data.CanonicalRootRole)
+	rootKeyIDs, err := importRootKey(cmd, t.rootKey, nRepo, t.retriever)
+	if err != nil {
+		return err
 	}
 
-	var rootKeyID string
-	if len(rootKeyList) < 1 {
-		cmd.Println("No root keys found. Generating a new root key...")
-		rootPublicKey, err := nRepo.CryptoService.Create(data.CanonicalRootRole, "", data.ECDSAKey)
-		if err != nil {
-			return err
-		}
-		rootKeyID = rootPublicKey.ID()
-	} else {
-		// Chooses the first root key available, which is initialization specific
-		// but should return the HW one first.
-		rootKeyID = rootKeyList[0]
-		cmd.Printf("Root key found, using: %s\n", rootKeyID)
-	}
-
-	if err = nRepo.Initialize([]string{rootKeyID}); err != nil {
+	if err = nRepo.Initialize(rootKeyIDs); err != nil {
 		return err
 	}
 
@@ -692,7 +691,7 @@ func (t *tufCommander) tufPublish(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return publishAndPrintToCLI(cmd, nRepo, gun)
+	return publishAndPrintToCLI(cmd, nRepo)
 }
 
 func (t *tufCommander) tufRemove(cmd *cobra.Command, args []string) error {
@@ -889,7 +888,7 @@ func tokenAuth(trustServerURL string, baseTransport *http.Transport, gun data.GU
 	if endpoint.Scheme == "" {
 		return nil, fmt.Errorf("Trust server url has to be in the form of http(s)://URL:PORT. Got: %s", trustServerURL)
 	}
-	subPath, err := url.Parse("v2/")
+	subPath, err := url.Parse(path.Join(endpoint.Path, "/v2") + "/")
 	if err != nil {
 		return nil, fmt.Errorf("Failed to parse v2 subpath. This error should not have been reached. Please report it as an issue at https://github.com/docker/notary/issues: %s", err.Error())
 	}
@@ -1037,14 +1036,14 @@ func maybeAutoPublish(cmd *cobra.Command, doPublish bool, gun data.GUN, config *
 		return err
 	}
 
-	cmd.Println("Auto-publishing changes to", gun)
-	return publishAndPrintToCLI(cmd, nRepo, gun)
+	cmd.Println("Auto-publishing changes to", nRepo.GetGUN())
+	return publishAndPrintToCLI(cmd, nRepo)
 }
 
-func publishAndPrintToCLI(cmd *cobra.Command, nRepo *notaryclient.NotaryRepository, gun data.GUN) error {
+func publishAndPrintToCLI(cmd *cobra.Command, nRepo *notaryclient.NotaryRepository) error {
 	if err := nRepo.Publish(); err != nil {
 		return err
 	}
-	cmd.Printf("Successfully published changes for repository %s\n", gun)
+	cmd.Printf("Successfully published changes for repository %s\n", nRepo.GetGUN())
 	return nil
 }

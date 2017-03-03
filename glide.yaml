@@ -15,7 +15,8 @@ import:
   subpackages:
   - tlsconfig
 - package: github.com/docker/notary
-  version: b5a20a3b0a47085ccc548c3a37838c8950f16460
+  version: b6b8ff7acbd214b88e57d47715764546533fdab8
+  repo: git@github.com:ecordell/notary.git
   subpackages:
   - cryptoservice
   - server
@@ -54,6 +55,7 @@ testImport:
   subpackages:
   - require
 - package: github.com/surullabs/lint
+  version: 0d756cead89e06c7937925629a8a7ae9b8082046
   subpackages:
   - dupl
   - gofmt
