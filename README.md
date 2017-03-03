@@ -15,7 +15,7 @@ make build
 # Dependency updates
 
 ```bash
-make deps
+make update-deps
 make test-all
 ```
 

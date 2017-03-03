@@ -27,7 +27,9 @@ function cleanup {
 
 function cleanupAndExit {
     cleanup
+    ls test_output/SUCCESS
     exitCode=$?
+	rm -rf test_output
     exit $exitCode
 }
 
