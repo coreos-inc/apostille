@@ -1,0 +1,66 @@
+resource_types:
+  - name: pull-request
+    type: docker-image
+    source:
+      repository: quay.io/quay/pr-resource
+      username: {{quay-robot-username}}
+      password: {{quay-robot-password}}
+
+resources:
+  - name: build-image
+    type: docker-image
+    source:
+      repository: quay.io/quay/apostille-build-image
+      username: {{quay-robot-username}}
+      password: {{quay-robot-password}}
+  - name: apostille-pull-request
+    type: git
+    source:
+      uri: git@github.com:coreos-inc/apostille.git
+      branch: master
+      private_key: {{quay-git-private-key}}
+      disable_ci_skip: true
+
+jobs:
+  - name: master-build
+    max_in_flight: 4
+    plan:
+      - get: apostille-pull-request
+        trigger: true
+      - task: tag
+        config:
+          image_resource:
+            type: docker-image
+            source:
+              repository: quay.io/quay/docker-git
+          platform: linux
+          outputs:
+            - name: tag
+          inputs:
+            - name: apostille-pull-request
+          run:
+            path: sh
+            args: ["-c", "cd apostille-pull-request && \
+                          echo master-$(git rev-parse --short --verify HEAD) > ../tag/name"]
+      - put: build-image
+        params: {build: apostille-pull-request, tag: tag/name}
+      - aggregate:
+        - task: unit
+          image: build-image
+          file: apostille-pull-request/ci/tasks/unit.yaml
+        - task: postgres
+          privileged: true
+          image: build-image
+          file: apostille-pull-request/ci/tasks/postgres.yaml
+        - task: mysql
+          privileged: true
+          image: build-image
+          file: apostille-pull-request/ci/tasks/mysql.yaml
+        on_success:
+          task:  master-success
+          image: quay.io/quay/docker-git
+          file:  apostille-pull-request/ci/tasks/on_success_merge_master.yaml
+        on_failure:
+          task:  master-failure
+          image: quay.io/quay/docker-git
+          file:  apostille-pull-request/ci/tasks/on_success_merge_master.yaml
