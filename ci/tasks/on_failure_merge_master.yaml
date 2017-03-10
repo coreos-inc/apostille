@@ -1,11 +1,12 @@
 ---
 platform: linux
 inputs:
-  - name: source-code
+  - name: apostille-pull-request
 run:
   path: /bin/sh
   args:
     - -c
     - |
+      cd apostille-pull-request
       export GIT_SHA=$(git rev-parse --short --verify HEAD)
       curl -X POST -H 'Content-type: application/json' --data '{"text":"Apostille build failed - ${GIT_SHA} "}' https://hooks.slack.com/services/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''
