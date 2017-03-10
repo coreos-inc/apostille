@@ -143,7 +143,7 @@ jobs:
           context: mysql
           status: pending
       - get: build-image
-      - task: postgres
+      - task: mysql
         privileged: true
         image: build-image
         file: apostille-pull-request/ci/tasks/mysql.yaml

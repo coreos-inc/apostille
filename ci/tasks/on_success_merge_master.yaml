@@ -1,0 +1,12 @@
+---
+platform: linux
+inputs:
+  - name: apostille-pull-request
+run:
+  path: /bin/sh
+  args:
+    - -c
+    - |
+      export GIT_SHA=$(git rev-parse --short --verify HEAD)
+      echo {"commit": "${GIT_SHA}", "ref": "refs/heads/master", "default_branch": "master" } > post.json
+      curl -X POST -d @post.json https://%24token:ZPQ48DLUAJDUMP7CA31AHM7P7GAOQMMJY5PCP91YWLAJT8YK00SCGIA57PRLEDM8@quay.io/webhooks/push/trigger/a1ef738f-2468-46cc-b100-17c8c811a55a --header "Content-Type:application/json"
