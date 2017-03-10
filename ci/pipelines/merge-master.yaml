@@ -13,6 +13,12 @@ resources:
       repository: quay.io/quay/apostille-build-image
       username: {{quay-robot-username}}
       password: {{quay-robot-password}}
+  - name: docker-git
+    type: docker-image
+    source:
+      repository: quay.io/quay/docker-git
+      username: {{quay-robot-username}}
+      password: {{quay-robot-password}}
   - name: apostille-pull-request
     type: git
     source:
@@ -27,6 +33,7 @@ jobs:
     plan:
       - get: apostille-pull-request
         trigger: true
+      - get: docker-git
       - task: tag
         config:
           image_resource:
@@ -58,9 +65,9 @@ jobs:
           file: apostille-pull-request/ci/tasks/mysql.yaml
         on_success:
           task:  master-success
-          image: quay.io/quay/docker-git
+          image: docker-git
           file:  apostille-pull-request/ci/tasks/on_success_merge_master.yaml
         on_failure:
           task:  master-failure
-          image: quay.io/quay/docker-git
+          image: docker-git
           file:  apostille-pull-request/ci/tasks/on_success_merge_master.yaml
