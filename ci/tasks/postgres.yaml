@@ -10,4 +10,6 @@ run:
       /usr/local/bin/wrapdocker
       export PATH=$PATH:/usr/local/go/bin/
       /usr/bin/make --directory=/go/src/github.com/coreos-inc/apostille integration-postgres
+      exit_code=$?
       kill $(cat /var/run/docker.pid)
+      exit $exit_code
