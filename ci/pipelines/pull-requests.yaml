@@ -30,6 +30,12 @@ jobs:
       - get: apostille-pull-request
         trigger: true
         version: every
+      - put: apostille-pull-request
+        params:
+          path: apostille-pull-request
+          context: unit
+          status: pending
+        version: every
       - task: tag
         config:
           image_resource:
@@ -47,11 +53,6 @@ jobs:
                           echo unit-$(git rev-parse --short --verify HEAD) > ../tag/name"]
       - put: build-image
         params: {build: apostille-pull-request, tag: tag/name}
-      - put: apostille-pull-request
-        params:
-          path: apostille-pull-request
-          context: unit
-          status: pending
       - get: build-image
       - task: unit
         image: build-image
@@ -75,6 +76,11 @@ jobs:
       - get: apostille-pull-request
         trigger: true
         version: every
+      - put: apostille-pull-request
+        params:
+          path: apostille-pull-request
+          context: postgres
+          status: pending
       - task: tag
         config:
           image_resource:
@@ -92,11 +98,6 @@ jobs:
                           echo postgres-$(git rev-parse --short --verify HEAD) > ../tag/name"]
       - put: build-image
         params: {build: apostille-pull-request, tag: tag/name}
-      - put: apostille-pull-request
-        params:
-          path: apostille-pull-request
-          context: postgres
-          status: pending
       - get: build-image
       - task: postgres
         privileged: true
@@ -120,6 +121,11 @@ jobs:
       - get: apostille-pull-request
         trigger: true
         version: every
+      - put: apostille-pull-request
+        params:
+          path: apostille-pull-request
+          context: mysql
+          status: pending
       - task: tag
         config:
           image_resource:
@@ -137,11 +143,6 @@ jobs:
                           echo mysql-$(git rev-parse --short --verify HEAD) > ../tag/name"]
       - put: build-image
         params: {build: apostille-pull-request, tag: tag/name}
-      - put: apostille-pull-request
-        params:
-          path: apostille-pull-request
-          context: mysql
-          status: pending
       - get: build-image
       - task: mysql
         privileged: true
