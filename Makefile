@@ -30,7 +30,7 @@ endif
 GLIDE := $(shell command -v glide -v 2> /dev/null)
 
 ifndef GLIDE
-    $(shell curl https://glide.sh/get | sh)
+    $(shell go get -u github.com/Masterminds/glide)
 endif
 
 _empty :=
