@@ -12,6 +12,9 @@
 		"level": "debug"
 	},
 	"storage": {
+		"backend": "memory"
+	},
+	"root_storage": {
 		"backend": "memory",
 		"root": "generate"
 	},

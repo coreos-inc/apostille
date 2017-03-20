@@ -33,6 +33,7 @@ type MultiplexingStore struct {
 	notaryStorage.MetaStore
 	SignerChannelMetaStore    notaryStorage.MetaStore
 	AlternateChannelMetaStore notaryStorage.MetaStore
+	RootMetaStore             notaryStorage.MetaStore
 	cryptoService             signed.CryptoService
 	stashedTargetsRole        data.RoleName
 	defaultChannel            notaryStorage.Channel
@@ -42,11 +43,12 @@ type MultiplexingStore struct {
 }
 
 // NewMultiplexingStore composes a new Multiplexing store instance from underlying stores.
-func NewMultiplexingStore(store notaryStorage.MetaStore, cs signed.CryptoService, defaultChannel notaryStorage.Channel, alternateRootChannel notaryStorage.Channel, rootChannel notaryStorage.Channel, rootGUN data.GUN, stashedTargetsRole data.RoleName) *MultiplexingStore {
+func NewMultiplexingStore(store, rootStore notaryStorage.MetaStore, cs signed.CryptoService, defaultChannel notaryStorage.Channel, alternateRootChannel notaryStorage.Channel, rootChannel notaryStorage.Channel, rootGUN data.GUN, stashedTargetsRole data.RoleName) *MultiplexingStore {
 	return &MultiplexingStore{
 		MetaStore:                 store,
 		SignerChannelMetaStore:    &ReadOnlyStore{MetaStore: NewChannelMetastore(store, defaultChannel)},
 		AlternateChannelMetaStore: &ReadOnlyStore{MetaStore: NewChannelMetastore(store, alternateRootChannel)},
+		RootMetaStore:             &ReadOnlyStore{MetaStore: NewChannelMetastore(rootStore, rootChannel)},
 		cryptoService:             cs,
 		stashedTargetsRole:        stashedTargetsRole,
 		defaultChannel:            defaultChannel,
@@ -57,7 +59,7 @@ func NewMultiplexingStore(store notaryStorage.MetaStore, cs signed.CryptoService
 }
 
 func (st *MultiplexingStore) fetchAlternateRootRepo() (*tuf.Repo, error) {
-	store := st.MetaStore
+	store := st.RootMetaStore
 	// Get root metadata
 	_, rootBytes, err := store.GetCurrent(st.rootGUN, data.CanonicalRootRole, &st.rootChannel)
 	if err != nil {
@@ -83,14 +85,7 @@ func (st *MultiplexingStore) fetchAlternateRootRepo() (*tuf.Repo, error) {
 
 	// Generate full repo
 	repo := tuf.NewRepo(st.cryptoService)
-	err = repo.InitRoot(baseRoles[data.CanonicalRootRole],
-		baseRoles[data.CanonicalTimestampRole],
-		baseRoles[data.CanonicalSnapshotRole],
-		baseRoles[data.CanonicalTargetsRole],
-		false)
-	if err != nil {
-		return nil, err
-	}
+	repo.Root = rootSignedRole
 
 	if _, err = repo.InitTargets(data.CanonicalTargetsRole); err != nil {
 		return nil, err

@@ -404,9 +404,13 @@ func TestGetStoreDBStore(t *testing.T) {
 	require.NoError(t, err)
 	tmpFile.Close()
 	defer os.Remove(tmpFile.Name())
+	tmpFile2, err := ioutil.TempFile("", "sqlite3")
+	require.NoError(t, err)
+	tmpFile2.Close()
+	defer os.Remove(tmpFile2.Name())
 
-	config := fmt.Sprintf(`{"storage": {"backend": "%s", "db_url": "%s"}}`,
-		notary.SQLiteBackend, tmpFile.Name())
+	config := fmt.Sprintf(`{"storage": {"backend": "%s", "db_url": "%s"},"root_storage":{"backend": "%s", "db_url": "%s"}}`,
+		notary.SQLiteBackend, tmpFile.Name(), notary.SQLiteBackend, tmpFile2.Name())
 
 	var registerCalled = 0
 
@@ -419,7 +423,7 @@ func TestGetStoreDBStore(t *testing.T) {
 	require.True(t, ok)
 
 	// health function registered
-	require.Equal(t, 1, registerCalled)
+	require.Equal(t, 2, registerCalled)
 }
 
 func TestGetMemoryStore(t *testing.T) {
@@ -429,7 +433,7 @@ func TestGetMemoryStore(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, err)
 
-	config := fmt.Sprintf(`{"storage": {"backend": "%s"}}`, notary.MemoryBackend)
+	config := fmt.Sprintf(`{"storage": {"backend": "%s"}, "root_storage": {"backend": "%s"}}`, notary.MemoryBackend, notary.MemoryBackend)
 	store, err := getStore(configure(config), trust, fakeRegisterer(&registerCalled))
 	require.NoError(t, err)
 	_, ok := store.(*storage.MultiplexingStore)

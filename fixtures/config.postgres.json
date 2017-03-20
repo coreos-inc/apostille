@@ -16,7 +16,11 @@
 	},
 	"storage": {
 		"backend": "postgres",
-		"db_url": "postgres://server@postgresql:5432/apostille?sslmode=disable",
+		"db_url": "postgres://server:12345@postgresql:5432/apostille?sslmode=disable"
+	},
+	"root_storage": {
+		"backend": "postgres",
+		"db_url": "postgres://server_root:54321@postgresql:5432/apostille_root?sslmode=disable",
 		"root": "generate"
 	},
 	"auth": {

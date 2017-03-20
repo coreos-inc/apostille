@@ -18,6 +18,10 @@
 		"backend": "mysql",
 		"db_url": "server@tcp(mysql:3306)/apostille?parseTime=True"
 	},
+	"root_storage": {
+		"backend": "mysql",
+		"db_url": "server_root@tcp(mysql:3306)/apostille_root?parseTime=True"
+	},
 	"auth": {
 		"type": "quaytoken",
 		"options": {

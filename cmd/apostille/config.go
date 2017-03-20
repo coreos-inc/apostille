@@ -95,27 +95,29 @@ func getStore(configuration *viper.Viper, trust signed.CryptoService, hRegister 
 	var store notaryStorage.MetaStore
 
 	backend := configuration.GetString("storage.backend")
-	logrus.Infof("Using %s backend", backend)
+	logrus.Infof("Using %s tuf backend", backend)
 
-	switch backend {
-	case notary.MemoryBackend:
-		store = notaryStorage.NewMemStorage()
-	case notary.MySQLBackend, notary.SQLiteBackend, notary.PostgresBackend:
-		storeConfig, err := utils.ParseSQLStorage(configuration)
-		if err != nil {
-			return nil, err
-		}
-		s, err := notaryStorage.NewSQLStorage(storeConfig.Backend, storeConfig.Source)
-		if err != nil {
-			return nil, fmt.Errorf("Error starting %s driver: %s", backend, err.Error())
-		}
-		store = *notaryStorage.NewTUFMetaStorage(s)
-		hRegister("DB operational", time.Minute, s.CheckHealth)
-	default:
-		return nil, fmt.Errorf("%s is not a supported storage backend", backend)
+	store, err := getBaseStore(configuration, hRegister, backend, "storage", "tuf files")
+	if err != nil {
+		return nil, err
 	}
+
+	rootBackend := configuration.GetString("root_storage.backend")
+	logrus.Infof("Using %s root backend", rootBackend)
+
+	rootStore, err := getBaseStore(configuration, hRegister, rootBackend, "root_storage", "root")
+	logrus.Info(rootStore)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := getQuayRoot(configuration, trust, rootStore); err != nil {
+		return nil, err
+	}
+
 	return storage.NewMultiplexingStore(
 			store,
+			rootStore,
 			trust,
 			storage.SignerRoot,
 			storage.AlternateRoot,
@@ -123,6 +125,54 @@ func getStore(configuration *viper.Viper, trust signed.CryptoService, hRegister 
 			data.GUN(os.Getenv("QUAY_ROOT")),
 			"targets/releases"),
 		nil
+}
+
+// parseSQLStorage tries to parse out Storage from a Viper.  If backend and
+// URL are not provided, returns a nil pointer.  Storage is required (if
+// a backend is not provided, an error will be returned.)
+func parseSQLStorage(configuration *viper.Viper, block string) (*utils.Storage, error) {
+	store := utils.Storage{
+		Backend: configuration.GetString(block + ".backend"),
+		Source:  configuration.GetString(block + ".db_url"),
+	}
+
+	switch {
+	case store.Backend != notary.MySQLBackend && store.Backend != notary.SQLiteBackend && store.Backend != notary.PostgresBackend:
+		return nil, fmt.Errorf(
+			"%s is not a supported SQL backend driver",
+			store.Backend,
+		)
+	case store.Source == "":
+		return nil, fmt.Errorf(
+			"must provide a non-empty database source for %s",
+			store.Backend,
+		)
+	}
+	return &store, nil
+}
+
+func getBaseStore(configuration *viper.Viper, hRegister healthRegister, backend, storage_key, dbname string) (store notaryStorage.MetaStore, err error) {
+	switch backend {
+	case notary.MemoryBackend:
+		store = notaryStorage.NewMemStorage()
+	case notary.MySQLBackend, notary.SQLiteBackend, notary.PostgresBackend:
+		storeConfig, err := parseSQLStorage(configuration, storage_key)
+		if err != nil {
+			return nil, err
+		}
+		s, err := notaryStorage.NewSQLStorage(storeConfig.Backend, storeConfig.Source)
+		if err != nil {
+			return nil, fmt.Errorf("Error starting %s driver: %s", backend, err.Error())
+		}
+		if configuration.GetString("logging.db_logging") == "on" {
+			s.DB.LogMode(true)
+		}
+		store = *notaryStorage.NewTUFMetaStorage(s)
+		hRegister(fmt.Sprintf("%s DB operational", dbname), time.Minute, s.CheckHealth)
+	default:
+		err = fmt.Errorf("%s is not a supported storage backend", backend)
+	}
+	return
 }
 
 type signerFactory func(hostname, port string, tlsConfig *tls.Config) (*client.NotarySigner, error)
@@ -238,16 +288,11 @@ func getCacheConfig(configuration *viper.Viper) (current, consistent utils.Cache
 }
 
 func getQuayRoot(configuration *viper.Viper, cs signed.CryptoService, store notaryStorage.MetaStore) error {
-	shouldGenerate := configuration.GetString("storage.root") == "generate"
+	shouldGenerate := configuration.GetString("root_storage.root") == "generate"
 	if !shouldGenerate {
 		return nil
 	}
-
-	metaStore, ok := store.(*storage.MultiplexingStore)
-	if !ok {
-		return fmt.Errorf("couldn't generate root repo, store not configured properly")
-	}
-	rootMetaStore := storage.WriteOnlyStore{MetaStore: storage.NewChannelMetastore(metaStore.MetaStore, storage.Root)}
+	rootMetaStore := storage.WriteOnlyStore{MetaStore: storage.NewChannelMetastore(store, storage.Root)}
 
 	gun := data.GUN(os.Getenv("QUAY_ROOT"))
 
@@ -432,10 +477,6 @@ func parseServerConfig(configFilePath string) (context.Context, server.Config, e
 
 	httpAddr, tlsConfig, err := getAddrAndTLSConfig(config)
 	if err != nil {
-		return nil, server.Config{}, err
-	}
-
-	if err := getQuayRoot(config, trust, store); err != nil {
 		return nil, server.Config{}, err
 	}
 
