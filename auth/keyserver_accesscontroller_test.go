@@ -1,16 +1,17 @@
 package auth
 
 import (
-	"testing"
-	"net/http/httptest"
 	"net/http"
-	"github.com/stretchr/testify/require"
+	"net/http/httptest"
+	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 var jsonKeyID = "QH6C:ST72:JAOS:ZBJC:ABP3:BTCG:NHJ5:46AI:PA3A:VPAV:QRNL:N5ZB"
 var validSingleJsonKey = `{"e": "AQAB","kid": "QH6C:ST72:JAOS:ZBJC:ABP3:BTCG:NHJ5:46AI:PA3A:VPAV:QRNL:N5ZB","kty": "RSA","n": "yqdQgnelhAPMSeyH0kr3UGePK9oFOmNfwD0Ymnh7YYXr21VHWwyM2eVW3cnLd9KXywDFtGSe9oFDbnOuMCdUowdkBcaHju-isbv5KEbNSoy_T2Rip-6L0cY63YzcMJzv1nEYztYXS8wz76pSK81BKBCLapqOCmcPeCvV9yaoFZYvZEsXCl5jjXN3iujSzSF5Z6PpNFlJWTErMT2Z4QfbDKX2Nw6vJN6JnGpTNHZvgvcyNX8vkSgVpQ8DFnFkBEx54PvRV5KpHAq6AsJxKONMo11idQS2PfCNpa2hvz9O6UZe-eIX8jPo5NW8TuGZJumbdPT_nxTDLfCqfiZboeI0Pw"}`
-var validJsonKeys = `{"key": [{"e": "AQAB","kid": "QH6C:ST72:JAOS:ZBJC:ABP3:BTCG:NHJ5:46AI:PA3A:VPAV:QRNL:N5ZB","kty": "RSA","n": "yqdQgnelhAPMSeyH0kr3UGePK9oFOmNfwD0Ymnh7YYXr21VHWwyM2eVW3cnLd9KXywDFtGSe9oFDbnOuMCdUowdkBcaHju-isbv5KEbNSoy_T2Rip-6L0cY63YzcMJzv1nEYztYXS8wz76pSK81BKBCLapqOCmcPeCvV9yaoFZYvZEsXCl5jjXN3iujSzSF5Z6PpNFlJWTErMT2Z4QfbDKX2Nw6vJN6JnGpTNHZvgvcyNX8vkSgVpQ8DFnFkBEx54PvRV5KpHAq6AsJxKONMo11idQS2PfCNpa2hvz9O6UZe-eIX8jPo5NW8TuGZJumbdPT_nxTDLfCqfiZboeI0Pw"}]}`
+var validJsonKeys = `{"keys": [{"e": "AQAB","kid": "QH6C:ST72:JAOS:ZBJC:ABP3:BTCG:NHJ5:46AI:PA3A:VPAV:QRNL:N5ZB","kty": "RSA","n": "yqdQgnelhAPMSeyH0kr3UGePK9oFOmNfwD0Ymnh7YYXr21VHWwyM2eVW3cnLd9KXywDFtGSe9oFDbnOuMCdUowdkBcaHju-isbv5KEbNSoy_T2Rip-6L0cY63YzcMJzv1nEYztYXS8wz76pSK81BKBCLapqOCmcPeCvV9yaoFZYvZEsXCl5jjXN3iujSzSF5Z6PpNFlJWTErMT2Z4QfbDKX2Nw6vJN6JnGpTNHZvgvcyNX8vkSgVpQ8DFnFkBEx54PvRV5KpHAq6AsJxKONMo11idQS2PfCNpa2hvz9O6UZe-eIX8jPo5NW8TuGZJumbdPT_nxTDLfCqfiZboeI0Pw"}]}`
 
 type testCase struct {
 	in  string
@@ -20,7 +21,7 @@ type testCase struct {
 func TestKeyServerAccessControllerUpdateKeys(t *testing.T) {
 	testCasesMultipleKeys := []testCase{
 		{`not json`, "invalid character"},
-		{`{"key":[{"invalid-key":{}}]}`, "JWK Public Key type: \"kty\" value not specified"},
+		{`{"keys":[{"invalid-key":{}}]}`, "no valid keys found"},
 	}
 	for _, tc := range testCasesMultipleKeys {
 		ac, ts := httpTestSetup(tc)
@@ -32,7 +33,7 @@ func TestKeyServerAccessControllerUpdateKeys(t *testing.T) {
 	err := ac.updateKeys()
 	require.NoError(t, err)
 	require.Equal(t, 1, len(ac.keys))
-	require.Equal(t, jsonKeyID, ac.keys[jsonKeyID].KeyID())
+	require.Equal(t, jsonKeyID, ac.keys[jsonKeyID].KeyID)
 
 }
 
@@ -48,7 +49,7 @@ func TestKeyServerAccessControllerUpdateKeysBadUrl(t *testing.T) {
 func TestTryFindKey(t *testing.T) {
 	testCasesSingleKey := []testCase{
 		{`not json`, "invalid character"},
-		{`{"invalid-key": "missing"}`, "JWK Public Key type: \"kty\" value not specified"},
+		{`{"invalid-key": "missing"}`, "unknown json web key type"},
 	}
 
 	for _, tc := range testCasesSingleKey {
@@ -60,7 +61,7 @@ func TestTryFindKey(t *testing.T) {
 	ac, _ := httpTestSetup(testCase{validSingleJsonKey, ""})
 	publicKey, err := ac.tryFindKey(jsonKeyID)
 	require.NoError(t, err)
-	require.Equal(t, jsonKeyID, publicKey.KeyID())
+	require.Equal(t, jsonKeyID, publicKey.KeyID)
 
 }
 

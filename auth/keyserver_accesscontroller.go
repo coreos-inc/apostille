@@ -16,7 +16,8 @@ import (
 	"github.com/docker/distribution/context"
 	registryAuth "github.com/docker/distribution/registry/auth"
 	registryToken "github.com/docker/distribution/registry/auth/token"
-	"github.com/docker/libtrust"
+	"gopkg.in/square/go-jose.v2"
+	"gopkg.in/square/go-jose.v2/jwt"
 )
 
 const (
@@ -32,7 +33,7 @@ type keyserverAccessController struct {
 	keyserver         string
 	updateKeyInterval time.Duration
 	keysLock          sync.RWMutex
-	keys              map[string]libtrust.PublicKey
+	keys              map[string]*jose.JSONWebKey
 }
 
 // tokenAccessOptions is a convenience type for handling
@@ -46,7 +47,7 @@ type tokenAccessOptions struct {
 }
 
 type Keys struct {
-	Keys []json.RawMessage `json:"key"`
+	Keys []json.RawMessage `json:"keys"`
 }
 
 type JWTContext struct {
@@ -128,17 +129,22 @@ func (ac *keyserverAccessController) Authorized(ctx context.Context, accessItems
 
 	rawToken := parts[1]
 
-	token, err := registryToken.NewToken(rawToken)
+	token, err := jwt.ParseSigned(rawToken)
 	if err != nil {
 		challenge.err = err
 		return nil, challenge
 	}
+	if len(token.Headers) < 1 {
+		challenge.err = fmt.Errorf("invalid JWT: no header")
+		return nil, challenge
+	}
+	keyID := token.Headers[0].KeyID
 
 	ac.keysLock.RLock()
-	pubKey, ok := ac.keys[token.Header.KeyID]
+	pubKey, ok := ac.keys[keyID]
 	ac.keysLock.RUnlock()
 	if !ok {
-		pubKey, err = ac.tryFindKey(token.Header.KeyID)
+		pubKey, err = ac.tryFindKey(keyID)
 		if err != nil {
 			challenge.err = err
 			return nil, challenge
@@ -149,12 +155,22 @@ func (ac *keyserverAccessController) Authorized(ctx context.Context, accessItems
 		challenge.err = fmt.Errorf("unable to decode JWK value: %s", err)
 		return nil, challenge
 	}
-	if err = VerifyNonX509(token, ac.issuer, ac.service, pubKey); err != nil {
+
+	claims := jwt.Claims{}
+	access := AccessClaim{}
+	if err := token.Claims(pubKey, &claims, &access); err != nil {
+		challenge.err = err
+		return nil, challenge
+	}
+	if err := claims.ValidateWithLeeway(jwt.Expected{
+		Issuer:   ac.issuer,
+		Audience: []string{ac.service},
+	}, Leeway); err != nil {
 		challenge.err = err
 		return nil, challenge
 	}
 
-	accessSet := AccessSet(token)
+	accessSet := AccessSet(access)
 	for _, access := range accessItems {
 		if !accessSet.contains(access) {
 			challenge.err = registryToken.ErrInsufficientScope
@@ -177,62 +193,12 @@ func (ac *keyserverAccessController) Authorized(ctx context.Context, accessItems
 	return context.WithValue(ctx, TufRootSigner, tufRootSigner), nil
 }
 
-// VerifyNonX509 attempts to verify this token using the given options.
-// Returns a nil error if the token is valid.
-// Unlike standard Token verification, does not expect a cert chain.
-func VerifyNonX509(token *registryToken.Token, issuer, service string, signingKey libtrust.PublicKey) error {
-	// Verify that the Issuer claim is a trusted authority.
-	if issuer != token.Claims.Issuer {
-		logrus.Infof("token from untrusted issuer: %q", token.Claims.Issuer)
-		return registryToken.ErrInvalidToken
-	}
-
-	// Verify that the Audience claim is allowed.
-	if service != token.Claims.Audience {
-		logrus.Infof("token intended for another audience: %q", token.Claims.Audience)
-		return registryToken.ErrInvalidToken
-	}
-
-	// Verify that the token is currently usable and not expired.
-	currentTime := time.Now()
-
-	ExpWithLeeway := time.Unix(token.Claims.Expiration, 0).Add(Leeway)
-	if currentTime.After(ExpWithLeeway) {
-		logrus.Infof("token not to be used after %s - currently %s", ExpWithLeeway, currentTime)
-		return registryToken.ErrInvalidToken
-	}
-
-	NotBeforeWithLeeway := time.Unix(token.Claims.NotBefore, 0).Add(-Leeway)
-	if currentTime.Before(NotBeforeWithLeeway) {
-		logrus.Infof("token not to be used before %s - currently %s", NotBeforeWithLeeway, currentTime)
-		return registryToken.ErrInvalidToken
-	}
-
-	// Verify the token signature.
-	if len(token.Signature) == 0 {
-		logrus.Info("token has no signature")
-		return registryToken.ErrInvalidToken
-	}
-
-	// Finally, verify the signature of the token using the key which signed it.
-	if err := signingKey.Verify(strings.NewReader(token.Raw), token.Header.SigningAlg, token.Signature); err != nil {
-		logrus.Infof("unable to verify token signature: %s", err)
-		return registryToken.ErrInvalidToken
-	}
-
-	return nil
-}
-
 // AccessSet returns a set of actions available for the resource
 // actions listed in the `access` section of the token.
-func AccessSet(token *registryToken.Token) accessSet {
-	if token.Claims == nil {
-		return nil
-	}
+func AccessSet(claim AccessClaim) accessSet {
+	accessSet := make(accessSet, len(claim.Access))
 
-	accessSet := make(accessSet, len(token.Claims.Access))
-
-	for _, resourceActions := range token.Claims.Access {
+	for _, resourceActions := range claim.Access {
 		resource := registryAuth.Resource{
 			Type: resourceActions.Type,
 			Name: resourceActions.Name,
@@ -263,22 +229,36 @@ func (ac *keyserverAccessController) updateKeys() error {
 	defer resp.Body.Close()
 
 	var maybeKeys Keys
-	err = json.NewDecoder(resp.Body).Decode(&maybeKeys)
+
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		logrus.Errorln("failed to read JWK set: " + err.Error())
+		return err
+	}
+	err = json.Unmarshal(respBytes, &maybeKeys)
 	if err != nil {
 		logrus.Errorln("failed to decode JWK JSON: " + err.Error())
 		return err
 	}
 
-	keys := make(map[string]libtrust.PublicKey)
-	for _, maybeKey := range maybeKeys.Keys {
-		pubKey, err := libtrust.UnmarshalPublicKeyJWK(maybeKey)
-		if err != nil {
-			logrus.Errorln("failed to decode JWK into public key: " + err.Error())
-			return err
+	keys := make(map[string]*jose.JSONWebKey)
+	for i, maybeKey := range maybeKeys.Keys {
+		jwk := jose.JSONWebKey{}
+		if err = jwk.UnmarshalJSON(maybeKey); err != nil {
+			logrus.Errorf("unable to decode JWK #%d value: %s", i, err)
+			continue
 		}
-		keys[pubKey.KeyID()] = pubKey
-	}
 
+		if !jwk.Valid() {
+			logrus.Errorf("JWK #%d invalid: %v", i, jwk)
+			continue
+		}
+
+		keys[jwk.KeyID] = &jwk
+	}
+	if len(keys) == 0 {
+		return fmt.Errorf("no valid keys found")
+	}
 	ac.keysLock.Lock()
 	ac.keys = keys
 	ac.keysLock.Unlock()
@@ -286,7 +266,7 @@ func (ac *keyserverAccessController) updateKeys() error {
 	return nil
 }
 
-func (ac *keyserverAccessController) tryFindKey(keyId string) (libtrust.PublicKey, error) {
+func (ac *keyserverAccessController) tryFindKey(keyId string) (*jose.JSONWebKey, error) {
 	url := fmt.Sprintf("%s/services/%s/keys/%s", ac.keyserver, ac.service, keyId)
 	logrus.Infof("fetching jwk from keyserver: %s", url)
 
@@ -302,11 +282,16 @@ func (ac *keyserverAccessController) tryFindKey(keyId string) (libtrust.PublicKe
 	}
 
 	// parse into pubKey
-	pubKey, err := libtrust.UnmarshalPublicKeyJWK(body)
-	if err != nil {
+	jwk := jose.JSONWebKey{}
+	if err = jwk.UnmarshalJSON(body); err != nil {
 		return nil, fmt.Errorf("unable to decode JWK value: %s", err)
 	}
-	return pubKey, nil
+
+	if !jwk.Valid() {
+		return nil, fmt.Errorf("JWK invalid: %v", jwk)
+	}
+
+	return &jwk, nil
 }
 
 func getTufRootSigner(myToken *JWTContext) (string, error) {
