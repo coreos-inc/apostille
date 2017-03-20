@@ -185,6 +185,12 @@ imports:
   - encoding
   - ql2
   - types
+- name: gopkg.in/square/go-jose.v2
+  version: d5683d954d08cd430460c651e2a2fff4f3b39f86
+  subpackages:
+  - cipher
+  - json
+  - jwt
 - name: gopkg.in/yaml.v2
   version: bef53efd0c76e49e6de55ead051f886bea7e9420
 testImports:

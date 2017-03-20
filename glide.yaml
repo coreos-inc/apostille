@@ -14,7 +14,6 @@ import:
   version: ~0.2.1
   subpackages:
   - tlsconfig
-- package: github.com/docker/libtrust
 - package: github.com/docker/notary
   version: b5a20a3b0a47085ccc548c3a37838c8950f16460
   subpackages:
@@ -44,6 +43,10 @@ import:
   version: v1.0.5
 - package: github.com/golang/protobuf
   version: c3cefd437628a0b7d31b34fe44b3a7a540e98527
+- package: gopkg.in/square/go-jose.v2
+  version: d5683d954d08cd430460c651e2a2fff4f3b39f86
+  subpackages:
+  - jwt
 testImport:
 - package: github.com/mattn/go-sqlite3
   version: ~1.2.0
