@@ -14,6 +14,10 @@ import (
 	registryToken "github.com/docker/distribution/registry/auth/token"
 )
 
+type AccessClaim struct {
+	Access []*registryToken.ResourceActions `json:"access"`
+}
+
 // Leeway is the Duration that will be added to NBF and EXP claim
 // checks to account for clock skew as per https://tools.ietf.org/html/rfc7519#section-4.1.5
 const Leeway = 60 * time.Second
