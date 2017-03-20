@@ -12,11 +12,16 @@
 		"tls_client_key": "../vendor/github.com/docker/notary/fixtures/notary-server.key"
 	},
 	"logging": {
-		"level": "debug"
+		"level": "debug",
+		"db_logging": "on"
 	},
 	"storage": {
 		"backend": "mysql",
-		"db_url": "server@tcp(mysql:3306)/apostille?parseTime=True",
+		"db_url": "server:12345@tcp(mysql:3306)/apostille?parseTime=True"
+	},
+	"root_storage": {
+		"backend": "mysql",
+		"db_url": "server_root:54321@tcp(mysql:3306)/apostille_root?parseTime=True",
 		"root": "generate"
 	},
 	"auth": {

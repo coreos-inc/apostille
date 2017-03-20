@@ -1,3 +1,22 @@
 CREATE DATABASE apostille;
-CREATE USER server;
+CREATE DATABASE apostille_root;
+
+REVOKE CREATE ON SCHEMA public FROM public;
+
+CREATE USER server WITH ENCRYPTED PASSWORD '12345';
 GRANT ALL PRIVILEGES ON DATABASE apostille TO server;
+
+-- Write user for apostille_root
+CREATE USER server_root WITH ENCRYPTED PASSWORD '54321';
+GRANT CREATE ON SCHEMA public to server_root;
+GRANT ALL PRIVILEGES ON DATABASE apostille_root TO server_root;
+
+-- Read Only user for apostille_root
+CREATE USER readonlyuser WITH ENCRYPTED PASSWORD '54321';
+GRANT CONNECT ON DATABASE apostille_root TO readonlyuser;
+GRANT USAGE ON SCHEMA public TO readonlyuser;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO readonlyuser;
+GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO readonlyuser;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO readonlyuser;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON SEQUENCES  TO readonlyuser;
+

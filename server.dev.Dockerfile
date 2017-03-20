@@ -25,4 +25,4 @@ RUN go install \
 RUN update-ca-certificates
 
 ENTRYPOINT [ "/bin/sh" ]
-CMD [ "apostile -config=fixtures/config.json" ]
+CMD [ "apostille -config=fixtures/config.json" ]

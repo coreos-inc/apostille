@@ -16,14 +16,13 @@ import (
 func MultiplexingMetaStoreMock(t *testing.T, trust signed.CryptoService) *storage.MultiplexingStore {
 	rootGUN := data.GUN("quay")
 	rootChannels := []*notaryStorage.Channel{&storage.Root}
-	metaStore := storage.NewMultiplexingStore(notaryStorage.NewMemStorage(), trust, storage.SignerRoot, storage.AlternateRoot, storage.Root, rootGUN, "targets/releases")
-
 	rootRepo := testUtils.CreateRepo(t, rootGUN, trust)
 	r, tg, sn, ts, err := testutils.Sign(rootRepo)
 	require.NoError(t, err)
 	rootJson, targetsJson, ssJson, tsJson, err := testutils.Serialize(r, tg, sn, ts)
 	require.NoError(t, err)
 
+	rootStore := notaryStorage.NewMemStorage()
 	updates := []notaryStorage.MetaUpdate{
 		{
 			data.CanonicalRootRole,
@@ -51,7 +50,7 @@ func MultiplexingMetaStoreMock(t *testing.T, trust signed.CryptoService) *storag
 		},
 	}
 
-	err = metaStore.MetaStore.UpdateMany(rootGUN, updates)
+	err = rootStore.UpdateMany(rootGUN, updates)
 	require.NoError(t, err)
-	return metaStore
+	return storage.NewMultiplexingStore(notaryStorage.NewMemStorage(), rootStore, trust, storage.SignerRoot, storage.AlternateRoot, storage.Root, rootGUN, "targets/releases")
 }
