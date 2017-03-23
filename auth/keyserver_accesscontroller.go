@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -10,20 +9,15 @@ import (
 	"sync"
 	"time"
 
-	"errors"
-
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/distribution/context"
 	registryAuth "github.com/docker/distribution/registry/auth"
 	registryToken "github.com/docker/distribution/registry/auth/token"
-	"gopkg.in/square/go-jose.v2"
+	jose "gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
-const (
-	TufRootSigner  string = "com.apostille.root"
-	TokenSeparator        = "."
-)
+const TufRootSigner string = "com.apostille.root"
 
 // keyserverAccessController implements the auth.AccessController interface.
 type keyserverAccessController struct {
@@ -50,8 +44,14 @@ type Keys struct {
 	Keys []json.RawMessage `json:"keys"`
 }
 
-type JWTContext struct {
-	Context map[string]string `json:"context"`
+type TokenContext struct {
+	Kind          string `json:"kind"`
+	TufRootSigner string `json:"com.apostille.root"`
+	User          string `json:"user"`
+}
+
+type ContextClaim struct {
+	Context TokenContext `json:"context"`
 }
 
 // checkOptions gathers the necessary options
@@ -158,13 +158,14 @@ func (ac *keyserverAccessController) Authorized(ctx context.Context, accessItems
 
 	claims := jwt.Claims{}
 	access := AccessClaim{}
-	if err := token.Claims(pubKey, &claims, &access); err != nil {
+	tokenContext := ContextClaim{}
+	if err := token.Claims(pubKey, &claims, &access, &tokenContext); err != nil {
 		challenge.err = err
 		return nil, challenge
 	}
 	if err := claims.ValidateWithLeeway(jwt.Expected{
 		Issuer:   ac.issuer,
-		Audience: []string{ac.service},
+		Audience: []string{ac.realm},
 	}, Leeway); err != nil {
 		challenge.err = err
 		return nil, challenge
@@ -173,24 +174,13 @@ func (ac *keyserverAccessController) Authorized(ctx context.Context, accessItems
 	accessSet := AccessSet(access)
 	for _, access := range accessItems {
 		if !accessSet.contains(access) {
+			logrus.Debugf("user permission set %v does not contain %v", accessSet, access)
 			challenge.err = registryToken.ErrInsufficientScope
 			return nil, challenge
 		}
 	}
 
-	jwtContext, err := getContext(rawToken)
-	if err != nil {
-		challenge.err = err
-		return nil, challenge
-	}
-
-	tufRootSigner, err := getTufRootSigner(jwtContext)
-	if err != nil {
-		challenge.err = err
-		return nil, challenge
-	}
-
-	return context.WithValue(ctx, TufRootSigner, tufRootSigner), nil
+	return context.WithValue(ctx, TufRootSigner, tokenContext.Context.TufRootSigner), nil
 }
 
 // AccessSet returns a set of actions available for the resource
@@ -292,36 +282,4 @@ func (ac *keyserverAccessController) tryFindKey(keyId string) (*jose.JSONWebKey,
 	}
 
 	return &jwk, nil
-}
-
-func getTufRootSigner(myToken *JWTContext) (string, error) {
-	tufRootSigner, ok := myToken.Context[TufRootSigner]
-	if !ok || tufRootSigner == "" {
-		return "", errors.New("No TUF root signer key")
-	}
-	return tufRootSigner, nil
-}
-
-func getContext(rawToken string) (*JWTContext, error) {
-	rawClaims := strings.Split(rawToken, TokenSeparator)[1]
-
-	var (
-		contextJson       []byte
-		err               error
-		ErrMalformedToken = errors.New("malformed token")
-	)
-
-	if contextJson, err = base64.URLEncoding.DecodeString(rawClaims); err != nil {
-		err = fmt.Errorf("unable to decode claims: %s", err)
-		return nil, ErrMalformedToken
-	}
-
-	jwtContext := new(JWTContext)
-
-	if err = json.Unmarshal(contextJson, jwtContext); err != nil {
-		err = fmt.Errorf("unable to unmarshal jwt context: %s", err)
-		return nil, ErrMalformedToken
-	}
-
-	return jwtContext, nil
 }
