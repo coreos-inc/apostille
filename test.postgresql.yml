@@ -16,6 +16,7 @@ services:
     entrypoint: /usr/bin/env sh
     command: -c "./migrations/migrate.sh && apostille -config=fixtures/config.postgres.json"
     environment:
+      QUAY_ROOT: quay.io/*
       MIGRATIONS_PATH: migrations/postgresql
       DB_URL: postgres://server@postgresql:5432/apostille?sslmode=disable
     depends_on:

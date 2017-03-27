@@ -12,7 +12,8 @@
 		"level": "debug"
 	},
 	"storage": {
-		"backend": "memory"
+		"backend": "memory",
+		"root": "generate"
 	},
 	"auth": {
 		"type": "testing"

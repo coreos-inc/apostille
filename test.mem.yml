@@ -10,6 +10,8 @@ services:
           - apostille
     entrypoint: /usr/bin/env sh
     command: -c "apostille -config=fixtures/config.mem.json"
+    environment:
+      - QUAY_ROOT=quay.io/*
   client:
     build:
       context: .

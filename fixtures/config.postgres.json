@@ -16,7 +16,8 @@
 	},
 	"storage": {
 		"backend": "postgres",
-		"db_url": "postgres://server@postgresql:5432/apostille?sslmode=disable"
+		"db_url": "postgres://server@postgresql:5432/apostille?sslmode=disable",
+		"root": "generate"
 	},
 	"auth": {
 		"type": "testing"

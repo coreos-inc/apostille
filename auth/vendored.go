@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	registryAuth "github.com/docker/distribution/registry/auth"
 	registryToken "github.com/docker/distribution/registry/auth/token"
 )
@@ -162,7 +161,6 @@ func (ac authChallenge) challengeParams() string {
 	} else if ac.err == registryToken.ErrInsufficientScope {
 		str = fmt.Sprintf("%s,error=%q", str, "insufficient_scope")
 	}
-	logrus.Info(str)
 	return str
 }
 

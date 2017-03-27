@@ -45,8 +45,8 @@ type MultiplexingStore struct {
 func NewMultiplexingStore(store notaryStorage.MetaStore, cs signed.CryptoService, defaultChannel notaryStorage.Channel, alternateRootChannel notaryStorage.Channel, rootChannel notaryStorage.Channel, rootGUN data.GUN, stashedTargetsRole data.RoleName) *MultiplexingStore {
 	return &MultiplexingStore{
 		MetaStore:                 store,
-		SignerChannelMetaStore:    NewChannelMetastore(store, defaultChannel),
-		AlternateChannelMetaStore: NewChannelMetastore(store, alternateRootChannel),
+		SignerChannelMetaStore:    &ReadOnlyStore{MetaStore: NewChannelMetastore(store, defaultChannel)},
+		AlternateChannelMetaStore: &ReadOnlyStore{MetaStore: NewChannelMetastore(store, alternateRootChannel)},
 		cryptoService:             cs,
 		stashedTargetsRole:        stashedTargetsRole,
 		defaultChannel:            defaultChannel,
@@ -124,9 +124,6 @@ func (st *MultiplexingStore) fetchAlternateRootRepo() (*tuf.Repo, error) {
 func (st *MultiplexingStore) UpdateMany(gun data.GUN, updates []notaryStorage.MetaUpdate) error {
 	allUpdates := make([]notaryStorage.MetaUpdate, 0, len(updates)*2)
 	allUpdates = append(allUpdates, st.setChannels(updates, &st.defaultChannel)...)
-	for _, update := range updates {
-		logrus.Info(update.Role)
-	}
 	alternateRootUpdates, err := st.swizzleTargets(gun, updates)
 	if err != nil {
 		logrus.Info("Unable to swizzle targets")
@@ -308,7 +305,7 @@ func (st *MultiplexingStore) stashSignerRootedTargetsRole(repo *tuf.Repo, signer
 	}
 	repo.Targets[st.stashedTargetsRole] = signedReleases
 
-	// resign targets, snapshot, and timestamp - the signer has all of these keys
+	// resign targets, snapshot, and timestamp - the signer server has all of these keys
 	if _, err = repo.SignTargets(data.CanonicalTargetsRole, data.DefaultExpires(data.CanonicalTimestampRole)); err != nil {
 		return err
 	}
