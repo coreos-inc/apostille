@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/coreos-inc/apostille/storage"
-	testUtils "github.com/coreos-inc/apostille/test"
 	notaryStorage "github.com/docker/notary/server/storage"
 	"github.com/docker/notary/tuf/data"
 	"github.com/docker/notary/tuf/signed"
@@ -16,7 +15,7 @@ import (
 func MultiplexingMetaStoreMock(t *testing.T, trust signed.CryptoService) *storage.MultiplexingStore {
 	rootGUN := data.GUN("quay")
 	rootChannels := []*notaryStorage.Channel{&storage.Root}
-	rootRepo := testUtils.CreateRepo(t, rootGUN, trust)
+	rootRepo := CreateRepo(t, rootGUN, trust)
 	r, tg, sn, ts, err := testutils.Sign(rootRepo)
 	require.NoError(t, err)
 	rootJson, targetsJson, ssJson, tsJson, err := testutils.Serialize(r, tg, sn, ts)
