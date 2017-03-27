@@ -1,4 +1,4 @@
-package test
+package storagetest
 
 import (
 	"io/ioutil"
