@@ -70,9 +70,6 @@ func (st *MultiplexingStore) UpdateMany(gun data.GUN, updates []notaryStorage.Me
 
 	alternateRootUpdates = st.setChannels(alternateRootUpdates, &st.alternateRootChannel)
 	allUpdates = append(allUpdates, alternateRootUpdates...)
-	for _, update := range allUpdates {
-		logrus.Infof("%s.%d.%s", update.Role, update.Version, update.Channels[0].Name)
-	}
 
 	if err := st.MetaStore.UpdateMany(gun, allUpdates); err != nil {
 		logrus.Info("Failed to update metadata")
@@ -82,7 +79,44 @@ func (st *MultiplexingStore) UpdateMany(gun data.GUN, updates []notaryStorage.Me
 	return nil
 }
 
-//setChannel puts a slice of MetaUpdates into a particular set of channels
+// swizzleTargets modifies the updates so that correct targets and delegations are created in the alternate root store
+func (st *MultiplexingStore) swizzleTargets(gun data.GUN, updates []notaryStorage.MetaUpdate) ([]notaryStorage.MetaUpdate, error) {
+	logrus.Debug("swizzling targets role for update")
+
+	repo, err := st.copyAlternateRoot()
+	if err != nil {
+		return nil, err
+	}
+
+	signerRootedMetadata, signerRootedMetadataIdx := st.mapUpdatesToRoles(updates)
+
+	if !st.shouldSwizzle(signerRootedMetadataIdx) {
+		logrus.Debug("no target changes to swizzle")
+		return updates, nil
+	}
+
+	if !st.swizzleAllowed(signerRootedMetadataIdx) {
+		return nil, fmt.Errorf("attempting to overwrite reserved delegation: %s", st.stashedTargetsRole)
+	}
+
+	signerRootedTargetKeys, err := st.getSignerRootedTargetKeys(gun, signerRootedMetadata, signerRootedMetadataIdx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = st.stashSignerRootedTargetsRole(repo, signerRootedTargetKeys, signerRootedMetadata)
+	if err != nil {
+		return nil, err
+	}
+
+	updates, err = st.modifyUpdates(updates, repo, signerRootedMetadata, signerRootedMetadataIdx)
+	if err != nil {
+		return nil, err
+	}
+	return updates, nil
+}
+
+//setChannels puts a slice of MetaUpdates into a particular set of channels
 func (st *MultiplexingStore) setChannels(updates []notaryStorage.MetaUpdate, channels ...*notaryStorage.Channel) []notaryStorage.MetaUpdate {
 	channelUpdates := make([]notaryStorage.MetaUpdate, len(updates))
 	for i, update := range updates {
@@ -96,26 +130,26 @@ func (st *MultiplexingStore) setChannels(updates []notaryStorage.MetaUpdate, cha
 func (st *MultiplexingStore) copyAlternateRoot() (*tuf.Repo, error) {
 	repo := tuf.NewRepo(st.cryptoService)
 	repo.Root = st.rootRepo.Root
-	logrus.Info("Copying global repo")
+	logrus.Debug("Copying global repo")
 	if _, err := repo.InitTargets(data.CanonicalTargetsRole); err != nil {
 		return nil, err
 	}
-	logrus.Info("Targets initialized")
+	logrus.Debug("Targets initialized")
 	if err := repo.InitSnapshot(); err != nil {
 		return nil, err
 	}
-	logrus.Info("Snapshot initialized")
+	logrus.Debug("Snapshot initialized")
 	if err := repo.InitTimestamp(); err != nil {
 		return nil, err
 	}
-	logrus.Info("Timestamp initialized")
+	logrus.Debug("Timestamp initialized")
 	return repo, nil
 }
 
 // mapUpdatesToRoles puts updates into maps accessible by name, instead of a list
 func (st *MultiplexingStore) mapUpdatesToRoles(updates []notaryStorage.MetaUpdate) (map[data.RoleName]notaryStorage.MetaUpdate, map[data.RoleName]int) {
-	oldMetadata := make(map[data.RoleName]notaryStorage.MetaUpdate)
-	oldMetadataIdx := map[data.RoleName]int{
+	metadata := make(map[data.RoleName]notaryStorage.MetaUpdate)
+	metadataIdx := map[data.RoleName]int{
 		data.CanonicalRootRole:      -1,
 		data.CanonicalSnapshotRole:  -1,
 		data.CanonicalTargetsRole:   -1,
@@ -124,44 +158,38 @@ func (st *MultiplexingStore) mapUpdatesToRoles(updates []notaryStorage.MetaUpdat
 	for i, u := range updates {
 		for _, role := range data.BaseRoles {
 			if u.Role == role {
-				oldMetadata[role] = u
-				oldMetadataIdx[role] = i
+				metadata[role] = u
+				metadataIdx[role] = i
 			}
 		}
 	}
-	return oldMetadata, oldMetadataIdx
+	return metadata, metadataIdx
 }
 
-// swizzleTargets modifies the updates so that correct targets and delegations are created in the alternate root store
-func (st *MultiplexingStore) swizzleTargets(gun data.GUN, updates []notaryStorage.MetaUpdate) ([]notaryStorage.MetaUpdate, error) {
-	repo, err := st.copyAlternateRoot()
-	if err != nil {
-		return nil, err
-	}
+// shouldSwizzle decides whether the set of updates requires swizzling
+func (st *MultiplexingStore) shouldSwizzle(oldMetadataIdx map[data.RoleName]int) bool {
+	// only swizzle updates if there have been changes to the targets role
+	return oldMetadataIdx[data.CanonicalTargetsRole] != -1
+}
 
-	oldMetadata, oldMetadataIdx := st.mapUpdatesToRoles(updates)
+// swizzleAllowed determines if the set of updates is swizzl-able
+func (st *MultiplexingStore) swizzleAllowed(oldMetadataIdx map[data.RoleName]int) bool {
+	// we don't allow swizzling if the update includes the `stashedTargetsRole`, since that's what apostille
+	// uses to re-root
+	return oldMetadataIdx[st.stashedTargetsRole] != -1
+}
 
-	if oldMetadataIdx[data.CanonicalTargetsRole] == -1 {
-		logrus.Info("no target changes to swizzle")
-		return updates, nil
-	}
-
-	if oldMetadataIdx[st.stashedTargetsRole] == -1 {
-		logrus.Info("attempting to overwrite stashed signer-rooted targets file")
-		return nil, fmt.Errorf("attempting to overwrite reserved delegation: %s", st.stashedTargetsRole)
-	}
-
-	logrus.Info("swizzling targets role for update")
-
+// getSignerRootedTargetKeys gets the target keys from the signer-rooted metadata that need to be stashed in stashedTargetsRole
+func (st *MultiplexingStore) getSignerRootedTargetKeys(gun data.GUN, signerRootedMetadata map[data.RoleName]notaryStorage.MetaUpdate, signerRootedMetadataIdx map[data.RoleName]int) (data.KeyList, error) {
 	// fetch target keys from root - these will be pushed down to StashedTargetsRole
 	// and replaced with the global target keys
-	var oldTargetKeys data.KeyList
+	var signerTargetKeys data.KeyList
 	var decodedRoot data.SignedRoot
 	var rootBytes []byte
-	if oldMetadataIdx[data.CanonicalRootRole] > -1 {
-		rootBytes = oldMetadata[data.CanonicalRootRole].Data
+	if signerRootedMetadataIdx[data.CanonicalRootRole] > -1 {
+		rootBytes = signerRootedMetadata[data.CanonicalRootRole].Data
 	} else {
-		logrus.Info("root not included in updates, loading last stored root")
+		logrus.Debug("root not included in updates, loading last stored root")
 		_, rootData, err := st.MetaStore.GetCurrent(gun, data.CanonicalRootRole)
 		if err != nil || rootData == nil {
 			return nil, fmt.Errorf("no root available to fetch target role from")
@@ -169,7 +197,7 @@ func (st *MultiplexingStore) swizzleTargets(gun data.GUN, updates []notaryStorag
 		rootBytes = rootData
 	}
 
-	err = json.Unmarshal(rootBytes, &decodedRoot)
+	err := json.Unmarshal(rootBytes, &decodedRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -178,88 +206,90 @@ func (st *MultiplexingStore) swizzleTargets(gun data.GUN, updates []notaryStorag
 		return nil, err
 	}
 	for _, key := range baseTargetsRole.Keys {
-		oldTargetKeys = append(oldTargetKeys, key)
+		signerTargetKeys = append(signerTargetKeys, key)
 		logrus.Info("found key ", key)
 	}
+	return signerTargetKeys, nil
+}
 
+// stashSignerRootedTargetsRole takes the signer-rooted targets role and moves it down to StashedTargetsRole
+func (st *MultiplexingStore) stashSignerRootedTargetsRole(repo *tuf.Repo, signerRootedTargetKeys data.KeyList, signerRootedMetadata map[data.RoleName]notaryStorage.MetaUpdate) error {
 	// add a StashedTargetsRole delegations that contains the keys from targets
 	// this is adding the delegation to the 'targets' metadata
-	err = repo.UpdateDelegationKeys(st.stashedTargetsRole, oldTargetKeys, []string{}, 1)
+	err := repo.UpdateDelegationKeys(st.stashedTargetsRole, signerRootedTargetKeys, []string{}, 1)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	logrus.Info("delegation created")
 	err = repo.UpdateDelegationPaths(st.stashedTargetsRole, []string{""}, []string{}, false)
 	logrus.Info("delegation paths updated")
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// copy the original targets file as-is over to 'StashedTargetsRole'
 	var decodedTargets data.Signed
-	err = json.Unmarshal(oldMetadata[data.CanonicalTargetsRole].Data, &decodedTargets)
+	err = json.Unmarshal(signerRootedMetadata[data.CanonicalTargetsRole].Data, &decodedTargets)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	signedReleases, err := data.TargetsFromSigned(&decodedTargets, st.stashedTargetsRole)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	repo.Targets[st.stashedTargetsRole] = signedReleases
 
 	// resign targets, snapshot, and timestamp - the signer has all of these keys
 	if _, err = repo.SignTargets(data.CanonicalTargetsRole, data.DefaultExpires(data.CanonicalTimestampRole)); err != nil {
-		return nil, err
+		return err
 	}
 	if _, err = repo.SignSnapshot(data.DefaultExpires(data.CanonicalSnapshotRole)); err != nil {
-		return nil, err
+		return err
 	}
 	if _, err = repo.SignTimestamp(data.DefaultExpires(data.CanonicalTimestampRole)); err != nil {
-		return nil, err
+		return err
 	}
+	return nil
+}
 
-	// Modify the updates list with our swizzled data
-	if oldMetadataIdx[data.CanonicalRootRole] > -1 {
+// modifyUpdates takes a modified repo (post-swizzling) and propagates those changes into the updates array
+func (st *MultiplexingStore) modifyUpdates(updates []notaryStorage.MetaUpdate, repo *tuf.Repo, signerRootedMetadata map[data.RoleName]notaryStorage.MetaUpdate, signerRootedMetadataIdx map[data.RoleName]int) ([]notaryStorage.MetaUpdate, error) {
+	if signerRootedMetadataIdx[data.CanonicalRootRole] > -1 {
 		newRoot, err := repo.Root.MarshalJSON()
 		if err != nil {
 			return nil, err
 		}
-		updates[oldMetadataIdx[data.CanonicalRootRole]].Data = newRoot
+		updates[signerRootedMetadataIdx[data.CanonicalRootRole]].Data = newRoot
 	}
 
-	if oldMetadataIdx[data.CanonicalSnapshotRole] > -1 {
+	if signerRootedMetadataIdx[data.CanonicalSnapshotRole] > -1 {
 		newSS, err := repo.Snapshot.MarshalJSON()
 		if err != nil {
 			return nil, err
 		}
-		updates[oldMetadataIdx[data.CanonicalSnapshotRole]].Data = newSS
+		updates[signerRootedMetadataIdx[data.CanonicalSnapshotRole]].Data = newSS
 	}
 
 	newTargets, err := repo.Targets[data.CanonicalTargetsRole].MarshalJSON()
 	if err != nil {
 		return nil, err
 	}
-	updates[oldMetadataIdx[data.CanonicalTargetsRole]].Data = newTargets
-
-	logrus.Info("new targets: ", string(newTargets))
+	updates[signerRootedMetadataIdx[data.CanonicalTargetsRole]].Data = newTargets
 
 	newTS, err := repo.Timestamp.MarshalJSON()
 	if err != nil {
 		return nil, err
 	}
-	logrus.Info("new ts: ", string(newTS))
-	updates[oldMetadataIdx[data.CanonicalTimestampRole]].Data = newTS
+	updates[signerRootedMetadataIdx[data.CanonicalTimestampRole]].Data = newTS
 
 	newReleases, err := repo.Targets[st.stashedTargetsRole].MarshalJSON()
 	if err != nil {
 		return nil, err
 	}
-	logrus.Info("new releases: ", string(newReleases))
 	updates = append(updates, notaryStorage.MetaUpdate{
 		Role:    st.stashedTargetsRole,
 		Data:    newReleases,
 		Version: repo.Targets[st.stashedTargetsRole].Signed.Version,
 	})
-
 	return updates, nil
 }
