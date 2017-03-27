@@ -12,6 +12,8 @@ services:
           - apostille
     entrypoint: /usr/bin/env sh
     command: -c "./migrations/migrate.sh && apostille -config=fixtures/config.mysql.json"
+    environment:
+      - QUAY_ROOT=quay.io/*
     depends_on:
       - notary_signer
       - mysql
