@@ -34,24 +34,89 @@ type MultiplexingStore struct {
 	SignerChannelMetaStore    notaryStorage.MetaStore
 	AlternateChannelMetaStore notaryStorage.MetaStore
 	cryptoService             signed.CryptoService
-	rootRepo                  tuf.Repo
 	stashedTargetsRole        data.RoleName
 	defaultChannel            notaryStorage.Channel
 	alternateRootChannel      notaryStorage.Channel
+	rootChannel               notaryStorage.Channel
+	rootGUN                   data.GUN
 }
 
 // NewMultiplexingStore composes a new Multiplexing store instance from underlying stores.
-func NewMultiplexingStore(store notaryStorage.MetaStore, cs signed.CryptoService, rootRepo tuf.Repo, defaultChannel notaryStorage.Channel, alternateRootChannel notaryStorage.Channel, stashedTargetsRole data.RoleName) *MultiplexingStore {
+func NewMultiplexingStore(store notaryStorage.MetaStore, cs signed.CryptoService, defaultChannel notaryStorage.Channel, alternateRootChannel notaryStorage.Channel, rootChannel notaryStorage.Channel, rootGUN data.GUN, stashedTargetsRole data.RoleName) *MultiplexingStore {
 	return &MultiplexingStore{
 		MetaStore:                 store,
 		SignerChannelMetaStore:    NewChannelMetastore(store, defaultChannel),
 		AlternateChannelMetaStore: NewChannelMetastore(store, alternateRootChannel),
 		cryptoService:             cs,
-		rootRepo:                  rootRepo,
 		stashedTargetsRole:        stashedTargetsRole,
 		defaultChannel:            defaultChannel,
 		alternateRootChannel:      alternateRootChannel,
+		rootChannel:               rootChannel,
+		rootGUN:                   rootGUN,
 	}
+}
+
+func (st *MultiplexingStore) fetchAlternateRootRepo() (*tuf.Repo, error) {
+	store := st.MetaStore
+	// Get root metadata
+	_, rootBytes, err := store.GetCurrent(st.rootGUN, data.CanonicalRootRole, &st.rootChannel)
+	if err != nil {
+		return nil, err
+	}
+	rootSigned := &data.Signed{}
+	if err := json.Unmarshal(rootBytes, rootSigned); err != nil {
+		return nil, err
+	}
+	rootSignedRole, err := data.RootFromSigned(rootSigned)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build root roles
+	baseRoles := map[data.RoleName]data.BaseRole{}
+	for _, baseRoleName := range data.BaseRoles {
+		baseRoles[baseRoleName], err = rootSignedRole.BuildBaseRole(baseRoleName)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Generate full repo
+	repo := tuf.NewRepo(st.cryptoService)
+	err = repo.InitRoot(baseRoles[data.CanonicalRootRole],
+		baseRoles[data.CanonicalTimestampRole],
+		baseRoles[data.CanonicalSnapshotRole],
+		baseRoles[data.CanonicalTargetsRole],
+		false)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err = repo.InitTargets(data.CanonicalTargetsRole); err != nil {
+		return nil, err
+	}
+	if err = repo.InitSnapshot(); err != nil {
+		return nil, err
+	}
+	if err = repo.InitTimestamp(); err != nil {
+		return nil, err
+	}
+
+	// Re-sign online roles
+	_, err = repo.SignTargets(data.CanonicalTargetsRole, data.DefaultExpires(data.CanonicalTargetsRole))
+	if err != nil {
+		return nil, err
+	}
+	_, err = repo.SignSnapshot(data.DefaultExpires(data.CanonicalSnapshotRole))
+	if err != nil {
+		return nil, err
+	}
+	_, err = repo.SignTimestamp(data.DefaultExpires(data.CanonicalTimestampRole))
+	if err != nil {
+		return nil, err
+	}
+
+	return repo, nil
 }
 
 // UpdateMany updates multiple TUF records at once
@@ -129,8 +194,12 @@ func (st *MultiplexingStore) setChannels(updates []notaryStorage.MetaUpdate, cha
 // copyAlternateRoot makes a copy of the global repo, so per-repo changes don't affect it
 func (st *MultiplexingStore) copyAlternateRoot() (*tuf.Repo, error) {
 	repo := tuf.NewRepo(st.cryptoService)
-	repo.Root = st.rootRepo.Root
-	logrus.Debug("Copying global repo")
+	rootRepo, err := st.fetchAlternateRootRepo()
+	if err != nil {
+		return nil, err
+	}
+	repo.Root = rootRepo.Root
+
 	if _, err := repo.InitTargets(data.CanonicalTargetsRole); err != nil {
 		return nil, err
 	}

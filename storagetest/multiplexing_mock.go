@@ -1,8 +1,9 @@
-package storage
+package storagetest
 
 import (
 	"testing"
 
+	"github.com/coreos-inc/apostille/storage"
 	testUtils "github.com/coreos-inc/apostille/test"
 	notaryStorage "github.com/docker/notary/server/storage"
 	"github.com/docker/notary/tuf/data"
@@ -12,10 +13,10 @@ import (
 )
 
 // MultiplexingMetaStoreMock creates a MultiplexingMetaStore prepped with a Root for metadata to be stored under
-func MultiplexingMetaStoreMock(t *testing.T, trust signed.CryptoService) *MultiplexingStore {
+func MultiplexingMetaStoreMock(t *testing.T, trust signed.CryptoService) *storage.MultiplexingStore {
 	rootGUN := data.GUN("quay")
-	rootChannels := []*notaryStorage.Channel{&Root}
-	metaStore := NewMultiplexingStore(notaryStorage.NewMemStorage(), trust, SignerRoot, AlternateRoot, Root, rootGUN, "targets/releases")
+	rootChannels := []*notaryStorage.Channel{&storage.Root}
+	metaStore := storage.NewMultiplexingStore(notaryStorage.NewMemStorage(), trust, storage.SignerRoot, storage.AlternateRoot, storage.Root, rootGUN, "targets/releases")
 
 	rootRepo := testUtils.CreateRepo(t, rootGUN, trust)
 	r, tg, sn, ts, err := testutils.Sign(rootRepo)
@@ -53,30 +54,4 @@ func MultiplexingMetaStoreMock(t *testing.T, trust signed.CryptoService) *Multip
 	err = metaStore.MetaStore.UpdateMany(rootGUN, updates)
 	require.NoError(t, err)
 	return metaStore
-}
-
-func TestSetChannels(t *testing.T) {
-	trust := testUtils.TrustServiceMock(t)
-	metaStore := MultiplexingMetaStoreMock(t, trust)
-
-	updates := []notaryStorage.MetaUpdate{
-		{
-			Role:     "testRole",
-			Data:     []byte("test"),
-			Version:  1,
-			Channels: nil,
-		},
-		{
-			Role:     "testRole",
-			Data:     []byte("test"),
-			Version:  1,
-			Channels: []*notaryStorage.Channel{&notaryStorage.Staged},
-		},
-	}
-	modifiedUpdates := metaStore.setChannels(updates, &AlternateRoot)
-	require.Equal(t, 2, len(modifiedUpdates))
-
-	for _, update := range modifiedUpdates {
-		require.Equal(t, []*notaryStorage.Channel{&AlternateRoot}, update.Channels)
-	}
 }

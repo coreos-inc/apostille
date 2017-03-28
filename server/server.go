@@ -22,7 +22,6 @@ import (
 	"github.com/docker/notary"
 	"github.com/docker/notary/server/errors"
 	"github.com/docker/notary/server/handlers"
-	"github.com/docker/notary/tuf"
 )
 
 // Config tells Run how to configure a server
@@ -35,7 +34,6 @@ type Config struct {
 	RepoPrefixes                 []string
 	ConsistentCacheControlConfig utils.CacheControlConfig
 	CurrentCacheControlConfig    utils.CacheControlConfig
-	QuayRootRepo                 *tuf.Repo
 }
 
 // Run sets up and starts a TLS server that can be cancelled using the

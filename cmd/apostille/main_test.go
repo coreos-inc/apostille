@@ -21,10 +21,8 @@ import (
 	"github.com/docker/notary/signer/api"
 	"github.com/docker/notary/signer/client"
 	"github.com/docker/notary/trustmanager"
-	"github.com/docker/notary/tuf"
 	"github.com/docker/notary/tuf/data"
 	"github.com/docker/notary/tuf/signed"
-	tufUtils "github.com/docker/notary/tuf/utils"
 	"github.com/docker/notary/utils"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/spf13/viper"
@@ -139,102 +137,6 @@ func testTrustService(t *testing.T) (signed.CryptoService, error) {
 		return nil, err
 	}
 	return trust, nil
-}
-
-func testAlternateRoot(cs signed.CryptoService) (*tuf.Repo, error) {
-	gun := data.GUN("quay-root")
-
-	rootPublicKey, err := cs.Create(data.CanonicalRootRole, gun, data.ECDSAKey)
-	if err != nil {
-		return nil, err
-	}
-	rootKey, _, err := cs.GetPrivateKey(rootPublicKey.ID())
-	if err != nil {
-		return nil, err
-	}
-
-	// Generate root public key cert
-	startTime := time.Now()
-	cert, err := cryptoservice.GenerateCertificate(rootKey, gun, startTime, startTime.Add(notary.Year*10))
-	if err != nil {
-		return nil, err
-	}
-	x509PublicKey := tufUtils.CertToKey(cert)
-	if x509PublicKey == nil {
-		return nil, fmt.Errorf("cannot use regenerated certificate: format %v", cert.PublicKeyAlgorithm)
-	}
-
-	// Generate root role
-	rootRole := data.NewBaseRole(data.CanonicalRootRole, notary.MinThreshold, x509PublicKey)
-
-	// Generate snapshot role
-	snapshotKey, err := cs.Create(data.CanonicalSnapshotRole, gun, data.ECDSAKey)
-	if err != nil {
-		return nil, err
-	}
-	snapshotRole := data.NewBaseRole(
-		data.CanonicalSnapshotRole,
-		notary.MinThreshold,
-		snapshotKey,
-	)
-
-	// Generate targets role
-	targetsKey, err := cs.Create(data.CanonicalTargetsRole, gun, data.ECDSAKey)
-	if err != nil {
-		return nil, err
-	}
-	targetsRole := data.NewBaseRole(
-		data.CanonicalTargetsRole,
-		notary.MinThreshold,
-		targetsKey,
-	)
-
-	// Generate timestamp role
-	timestampKey, err := cs.Create(data.CanonicalTimestampRole, gun, data.ECDSAKey)
-	if err != nil {
-		return nil, err
-	}
-	timestampRole := data.NewBaseRole(
-		data.CanonicalTimestampRole,
-		notary.MinThreshold,
-		timestampKey,
-	)
-
-	// Generate full repo
-	repo := tuf.NewRepo(cs)
-	err = repo.InitRoot(rootRole, timestampRole, snapshotRole, targetsRole, false)
-	if err != nil {
-		return nil, err
-	}
-
-	if _, err = repo.InitTargets(data.CanonicalTargetsRole); err != nil {
-		return nil, err
-	}
-	if err = repo.InitSnapshot(); err != nil {
-		return nil, err
-	}
-	if err = repo.InitTimestamp(); err != nil {
-		return nil, err
-	}
-
-	_, err = repo.SignRoot(data.DefaultExpires(data.CanonicalRootRole), nil)
-	if err != nil {
-		return nil, err
-	}
-	_, err = repo.SignTargets(data.CanonicalTargetsRole, data.DefaultExpires(data.CanonicalTargetsRole))
-	if err != nil {
-		return nil, err
-	}
-	_, err = repo.SignSnapshot(data.DefaultExpires(data.CanonicalSnapshotRole))
-	if err != nil {
-		return nil, err
-	}
-	_, err = repo.SignTimestamp(data.DefaultExpires(data.CanonicalTimestampRole))
-	if err != nil {
-		return nil, err
-	}
-
-	return repo, nil
 }
 
 func TestGetAddrAndTLSConfigInvalidTLS(t *testing.T) {
@@ -490,7 +392,7 @@ func TestGetStoreInvalid(t *testing.T) {
 	config := `{"storage": {"backend": "asdf", "db_url": "doesnt_matter_what_value_this_is"}}`
 
 	var registerCalled = 0
-	_, err := getStore(configure(config), nil, nil, fakeRegisterer(&registerCalled))
+	_, err := getStore(configure(config), nil, fakeRegisterer(&registerCalled))
 	require.Error(t, err)
 
 	// no health function ever registered
@@ -510,10 +412,8 @@ func TestGetStoreDBStore(t *testing.T) {
 
 	trust, err := testTrustService(t)
 	require.NoError(t, err)
-	repo, err := testAlternateRoot(trust)
-	require.NoError(t, err)
 
-	store, err := getStore(configure(config), trust, repo, fakeRegisterer(&registerCalled))
+	store, err := getStore(configure(config), trust, fakeRegisterer(&registerCalled))
 	require.NoError(t, err)
 	_, ok := store.(*storage.MultiplexingStore)
 	require.True(t, ok)
@@ -527,11 +427,10 @@ func TestGetMemoryStore(t *testing.T) {
 
 	trust, err := testTrustService(t)
 	require.NoError(t, err)
-	repo, err := testAlternateRoot(trust)
 	require.NoError(t, err)
 
 	config := fmt.Sprintf(`{"storage": {"backend": "%s"}}`, notary.MemoryBackend)
-	store, err := getStore(configure(config), trust, repo, fakeRegisterer(&registerCalled))
+	store, err := getStore(configure(config), trust, fakeRegisterer(&registerCalled))
 	require.NoError(t, err)
 	_, ok := store.(*storage.MultiplexingStore)
 	require.True(t, ok)
