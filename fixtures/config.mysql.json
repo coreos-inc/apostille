@@ -22,7 +22,8 @@
 	"root_storage": {
 		"backend": "mysql",
 		"db_url": "server_root:54321@tcp(mysql:3306)/apostille_root?parseTime=True",
-		"root": "generate"
+		"root": "generate",
+		"rootGUN": "quay.dev",
 	},
 	"auth": {
 		"type": "testing"

@@ -25,7 +25,6 @@ import (
 	_ "github.com/lib/pq"
 
 	"encoding/json"
-	"os"
 
 	"github.com/docker/notary/cryptoservice"
 	"github.com/docker/notary/tuf"
@@ -90,6 +89,8 @@ func grpcTLS(configuration *viper.Viper) (*tls.Config, error) {
 }
 
 // getStore parses the configuration and returns a backing store for the TUF files
+// it returns a Multiplexing store, which splits updates between signer-rooted and alternate-rooted
+// the Multiplexing store gets references to the underlying stores it interacts with
 func getStore(configuration *viper.Viper, trust signed.CryptoService, hRegister healthRegister) (
 	notaryStorage.MetaStore, error) {
 	var store notaryStorage.MetaStore
@@ -106,7 +107,6 @@ func getStore(configuration *viper.Viper, trust signed.CryptoService, hRegister 
 	logrus.Infof("Using %s root backend", rootBackend)
 
 	rootStore, err := getBaseStore(configuration, hRegister, rootBackend, "root_storage", "root")
-	logrus.Info(rootStore)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func getStore(configuration *viper.Viper, trust signed.CryptoService, hRegister 
 			storage.SignerRoot,
 			storage.AlternateRoot,
 			storage.Root,
-			data.GUN(os.Getenv("QUAY_ROOT")),
+			data.GUN(configuration.GetString("root_storage.rootGUN")),
 			"targets/releases"),
 		nil
 }
@@ -151,6 +151,8 @@ func parseSQLStorage(configuration *viper.Viper, block string) (*utils.Storage, 
 	return &store, nil
 }
 
+// getBaseStore gets a basic MetaStore connected to the correct SQL backend. It is wrapped with other layers before
+// used.
 func getBaseStore(configuration *viper.Viper, hRegister healthRegister, backend, storage_key, dbname string) (store notaryStorage.MetaStore, err error) {
 	switch backend {
 	case notary.MemoryBackend:
@@ -294,7 +296,7 @@ func getQuayRoot(configuration *viper.Viper, cs signed.CryptoService, store nota
 	}
 	rootMetaStore := storage.WriteOnlyStore{MetaStore: storage.NewChannelMetastore(store, storage.Root)}
 
-	gun := data.GUN(os.Getenv("QUAY_ROOT"))
+	gun := data.GUN(configuration.GetString("root_storage.rootGUN"))
 
 	logrus.Infof("Generating root repo for %s", gun.String())
 
