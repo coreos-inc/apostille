@@ -58,6 +58,8 @@ func NewMultiplexingStore(store, rootStore notaryStorage.MetaStore, cs signed.Cr
 	}
 }
 
+// fetchAlternateRootRepo gets the root roles that we use to re-root with from the database
+// TODO: load once on startup, and cache
 func (st *MultiplexingStore) fetchAlternateRootRepo() (*tuf.Repo, error) {
 	store := st.RootMetaStore
 	// Get root metadata
@@ -137,6 +139,10 @@ func (st *MultiplexingStore) UpdateMany(gun data.GUN, updates []notaryStorage.Me
 }
 
 // swizzleTargets modifies the updates so that correct targets and delegations are created in the alternate root store
+// this normally looks like:
+//   - storing the original updates as-is in the signer-rooted store
+//   - copying the uploaded targets file to targets/releases in the alternate-rooted store
+//   - generating a targets file with the online root targets key that delegates to targets/releases
 func (st *MultiplexingStore) swizzleTargets(gun data.GUN, updates []notaryStorage.MetaUpdate) ([]notaryStorage.MetaUpdate, error) {
 	logrus.Debug("swizzling targets role for update")
 
@@ -173,7 +179,7 @@ func (st *MultiplexingStore) swizzleTargets(gun data.GUN, updates []notaryStorag
 	return updates, nil
 }
 
-//setChannels puts a slice of MetaUpdates into a particular set of channels
+// setChannels puts a slice of MetaUpdates into a particular set of channels
 func (st *MultiplexingStore) setChannels(updates []notaryStorage.MetaUpdate, channels ...*notaryStorage.Channel) []notaryStorage.MetaUpdate {
 	channelUpdates := make([]notaryStorage.MetaUpdate, len(updates))
 	for i, update := range updates {
@@ -274,6 +280,7 @@ func (st *MultiplexingStore) getSignerRootedTargetKeys(gun data.GUN, signerRoote
 }
 
 // stashSignerRootedTargetsRole takes the signer-rooted targets role and moves it down to StashedTargetsRole
+// TODO: name this better so it doesn't sound temporary
 func (st *MultiplexingStore) stashSignerRootedTargetsRole(repo *tuf.Repo, signerRootedTargetKeys data.KeyList, signerRootedMetadata map[data.RoleName]notaryStorage.MetaUpdate) error {
 	// add a StashedTargetsRole delegations that contains the keys from targets
 	// this is adding the delegation to the 'targets' metadata
@@ -300,7 +307,7 @@ func (st *MultiplexingStore) stashSignerRootedTargetsRole(repo *tuf.Repo, signer
 	}
 	repo.Targets[st.stashedTargetsRole] = signedReleases
 
-	// resign targets, snapshot, and timestamp - the signer server has all of these keys
+	// re-sign targets, snapshot, and timestamp - the signer server has all of these keys
 	if _, err = repo.SignTargets(data.CanonicalTargetsRole, data.DefaultExpires(data.CanonicalTimestampRole)); err != nil {
 		return err
 	}

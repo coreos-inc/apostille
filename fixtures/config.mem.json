@@ -16,7 +16,8 @@
 	},
 	"root_storage": {
 		"backend": "memory",
-		"root": "generate"
+		"root": "generate",
+		"rootGUN": "quay.dev",
 	},
 	"auth": {
 		"type": "testing"
