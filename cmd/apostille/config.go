@@ -153,12 +153,12 @@ func parseSQLStorage(configuration *viper.Viper, block string) (*utils.Storage, 
 
 // getBaseStore gets a basic MetaStore connected to the correct SQL backend. It is wrapped with other layers before
 // used.
-func getBaseStore(configuration *viper.Viper, hRegister healthRegister, backend, storage_key, dbname string) (store notaryStorage.MetaStore, err error) {
+func getBaseStore(configuration *viper.Viper, hRegister healthRegister, backend, storageKey, dbname string) (store notaryStorage.MetaStore, err error) {
 	switch backend {
 	case notary.MemoryBackend:
 		store = notaryStorage.NewMemStorage()
 	case notary.MySQLBackend, notary.SQLiteBackend, notary.PostgresBackend:
-		storeConfig, err := parseSQLStorage(configuration, storage_key)
+		storeConfig, err := parseSQLStorage(configuration, storageKey)
 		if err != nil {
 			return nil, err
 		}

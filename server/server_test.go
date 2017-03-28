@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/coreos-inc/apostille/auth"
+	"github.com/coreos-inc/apostille/servertest"
 	"github.com/coreos-inc/apostille/storage"
 	"github.com/coreos-inc/apostille/storagetest"
 	registryAuth "github.com/docker/distribution/registry/auth"
@@ -146,7 +147,7 @@ func TestMetricsEndpoint(t *testing.T) {
 
 // GetKeys supports only the timestamp and snapshot key endpoints
 func TestGetKeysEndpoint(t *testing.T) {
-	trust := storagetest.TrustServiceMock(t)
+	trust := servertest.TrustServiceMock(t)
 	metaStore := storagetest.MultiplexingMetaStoreMock(t, trust)
 	ctx := context.WithValue(context.Background(), notary.CtxKeyMetaStore, metaStore)
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, data.ED25519Key)
@@ -178,7 +179,7 @@ func TestGetKeysEndpoint(t *testing.T) {
 // More detailed tests for this path including negative
 // tests are located in /server/handlers/
 func TestGetRoleByHash(t *testing.T) {
-	trust := storagetest.TrustServiceMock(t)
+	trust := servertest.TrustServiceMock(t)
 	metaStore := storagetest.MultiplexingMetaStoreMock(t, trust)
 	ts := data.SignedTimestamp{
 		Signatures: make([]data.Signature, 0),
@@ -250,7 +251,7 @@ func TestGetRoleByHash(t *testing.T) {
 // More detailed tests for this path including negative
 // tests are located in /server/handlers/
 func TestGetRoleByVersion(t *testing.T) {
-	trust := storagetest.TrustServiceMock(t)
+	trust := servertest.TrustServiceMock(t)
 	metaStore := storagetest.MultiplexingMetaStoreMock(t, trust)
 
 	ts := data.SignedTimestamp{
@@ -320,7 +321,7 @@ func TestGetRoleByVersion(t *testing.T) {
 // More detailed tests for this path including negative
 // tests are located in /server/handlers/
 func TestGetCurrentRole(t *testing.T) {
-	trust := storagetest.TrustServiceMock(t)
+	trust := servertest.TrustServiceMock(t)
 	metaStore := storagetest.MultiplexingMetaStoreMock(t, trust)
 
 	metadata, _, err := testutils.NewRepoMetadata("gun")
@@ -373,7 +374,7 @@ func verifyGetResponse(t *testing.T, r *http.Response, expectedBytes []byte) {
 
 // RotateKey supports only timestamp and snapshot key rotation
 func TestRotateKeyEndpoint(t *testing.T) {
-	trust := storagetest.TrustServiceMock(t)
+	trust := servertest.TrustServiceMock(t)
 	metaStore := storagetest.MultiplexingMetaStoreMock(t, trust)
 
 	ctx := context.WithValue(
@@ -405,7 +406,7 @@ func TestRotateKeyEndpoint(t *testing.T) {
 }
 
 func TestValidationErrorFormat(t *testing.T) {
-	trust := storagetest.TrustServiceMock(t)
+	trust := servertest.TrustServiceMock(t)
 	metaStore := storagetest.MultiplexingMetaStoreMock(t, trust)
 
 	ctx := context.WithValue(
@@ -444,47 +445,47 @@ func TestValidationErrorFormat(t *testing.T) {
 }
 
 func TestSigningUserPushNonSignerPullSignerPull(t *testing.T) {
-	trust := storagetest.TrustServiceMock(t)
+	trust := servertest.TrustServiceMock(t)
 	ac := auth.NewTestingAccessController("signer")
 	gun := data.GUN("quay.io/signingUser/testRepo")
 	server, client := testServerAndClient(t, gun, trust, ac)
 	defer server.Close()
-	repo := storagetest.CreateRepo(t, gun, trust)
-	rootJson, targetsJson, ssJson, _ := storagetest.PushRepo(t, repo, client)
+	repo := servertest.CreateRepo(t, gun, trust)
+	rootJson, targetsJson, ssJson, _ := servertest.PushRepo(t, repo, client)
 
-	storagetest.RemoteEqual(t, client, data.CanonicalRootRole, rootJson)
-	storagetest.RemoteEqual(t, client, data.CanonicalTargetsRole, targetsJson)
-	storagetest.RemoteEqual(t, client, data.CanonicalSnapshotRole, ssJson)
+	servertest.RemoteEqual(t, client, data.CanonicalRootRole, rootJson)
+	servertest.RemoteEqual(t, client, data.CanonicalTargetsRole, targetsJson)
+	servertest.RemoteEqual(t, client, data.CanonicalSnapshotRole, ssJson)
 
 	ac.TUFRoot = "quay"
 
-	storagetest.RemoteNotEqual(t, client, data.CanonicalRootRole, rootJson)
-	storagetest.RemoteNotEqual(t, client, data.CanonicalTargetsRole, targetsJson)
-	storagetest.RemoteNotEqual(t, client, data.CanonicalSnapshotRole, ssJson)
-	storagetest.RemoteEqual(t, client, "targets/releases", targetsJson)
+	servertest.RemoteNotEqual(t, client, data.CanonicalRootRole, rootJson)
+	servertest.RemoteNotEqual(t, client, data.CanonicalTargetsRole, targetsJson)
+	servertest.RemoteNotEqual(t, client, data.CanonicalSnapshotRole, ssJson)
+	servertest.RemoteEqual(t, client, "targets/releases", targetsJson)
 }
 
 func TestSigningUserPushSignerPullNonSignerPull(t *testing.T) {
-	trust := storagetest.TrustServiceMock(t)
+	trust := servertest.TrustServiceMock(t)
 	ac := auth.NewTestingAccessController("signer")
 	gun := data.GUN("quay.io/signingUser/testRepo")
 	server, client := testServerAndClient(t, gun, trust, ac)
 	defer server.Close()
-	repo := storagetest.CreateRepo(t, gun, trust)
-	rootJson, targetsJson, ssJson, _ := storagetest.PushRepo(t, repo, client)
+	repo := servertest.CreateRepo(t, gun, trust)
+	rootJson, targetsJson, ssJson, _ := servertest.PushRepo(t, repo, client)
 
 	ac.TUFRoot = "quay"
 
-	storagetest.RemoteNotEqual(t, client, data.CanonicalRootRole, rootJson)
-	storagetest.RemoteNotEqual(t, client, data.CanonicalTargetsRole, targetsJson)
-	storagetest.RemoteNotEqual(t, client, data.CanonicalSnapshotRole, ssJson)
-	storagetest.RemoteEqual(t, client, "targets/releases", targetsJson)
+	servertest.RemoteNotEqual(t, client, data.CanonicalRootRole, rootJson)
+	servertest.RemoteNotEqual(t, client, data.CanonicalTargetsRole, targetsJson)
+	servertest.RemoteNotEqual(t, client, data.CanonicalSnapshotRole, ssJson)
+	servertest.RemoteEqual(t, client, "targets/releases", targetsJson)
 
 	ac.TUFRoot = "signer"
 
-	storagetest.RemoteEqual(t, client, data.CanonicalRootRole, rootJson)
-	storagetest.RemoteEqual(t, client, data.CanonicalTargetsRole, targetsJson)
-	storagetest.RemoteEqual(t, client, data.CanonicalSnapshotRole, ssJson)
+	servertest.RemoteEqual(t, client, data.CanonicalRootRole, rootJson)
+	servertest.RemoteEqual(t, client, data.CanonicalTargetsRole, targetsJson)
+	servertest.RemoteEqual(t, client, data.CanonicalSnapshotRole, ssJson)
 }
 
 func testServerAndClient(t *testing.T, gun data.GUN, trust signed.CryptoService, ac registryAuth.AccessController) (*httptest.Server, store.RemoteStore) {
