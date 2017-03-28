@@ -16,18 +16,13 @@ import (
 	_ "github.com/docker/distribution/registry/auth/token"
 	"github.com/docker/go-connections/tlsconfig"
 	"github.com/docker/notary"
-	"github.com/docker/notary/cryptoservice"
 	notaryStorage "github.com/docker/notary/server/storage"
 	"github.com/docker/notary/signer/client"
-	"github.com/docker/notary/tuf"
 	"github.com/docker/notary/tuf/data"
 	"github.com/docker/notary/tuf/signed"
-	tufUtils "github.com/docker/notary/tuf/utils"
 	"github.com/docker/notary/utils"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
-
-	"os"
 
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
@@ -89,7 +84,7 @@ func grpcTLS(configuration *viper.Viper) (*tls.Config, error) {
 }
 
 // getStore parses the configuration and returns a backing store for the TUF files
-func getStore(configuration *viper.Viper, trust signed.CryptoService, rootRepo *tuf.Repo, hRegister healthRegister) (
+func getStore(configuration *viper.Viper, trust signed.CryptoService, hRegister healthRegister) (
 	notaryStorage.MetaStore, error) {
 	var store notaryStorage.MetaStore
 
@@ -113,7 +108,7 @@ func getStore(configuration *viper.Viper, trust signed.CryptoService, rootRepo *
 	default:
 		return nil, fmt.Errorf("%s is not a supported storage backend", backend)
 	}
-	return storage.NewMultiplexingStore(store, trust, *rootRepo, storage.SignerRoot, storage.AlternateRoot, "targets/releases"), nil
+	return storage.NewMultiplexingStore(store, trust, storage.SignerRoot, storage.AlternateRoot, storage.Root, "quay", "targets/releases"), nil
 }
 
 type signerFactory func(hostname, port string, tlsConfig *tls.Config) (*client.NotarySigner, error)
@@ -228,102 +223,6 @@ func getCacheConfig(configuration *viper.Viper) (current, consistent utils.Cache
 	return
 }
 
-func generateQuayRoot(cs signed.CryptoService) (*tuf.Repo, error) {
-	gun := data.GUN(os.Getenv("QUAY_ROOT"))
-
-	rootPublicKey, err := cs.Create(data.CanonicalRootRole, gun, data.ECDSAKey)
-	if err != nil {
-		return nil, err
-	}
-	rootKey, _, err := cs.GetPrivateKey(rootPublicKey.ID())
-	if err != nil {
-		return nil, err
-	}
-
-	// Generate root public key cert
-	startTime := time.Now()
-	cert, err := cryptoservice.GenerateCertificate(rootKey, gun, startTime, startTime.Add(notary.Year*10))
-	if err != nil {
-		return nil, err
-	}
-	x509PublicKey := tufUtils.CertToKey(cert)
-	if x509PublicKey == nil {
-		return nil, fmt.Errorf("cannot use regenerated certificate: format %v", cert.PublicKeyAlgorithm)
-	}
-
-	// Generate root role
-	rootRole := data.NewBaseRole(data.CanonicalRootRole, notary.MinThreshold, x509PublicKey)
-
-	// Generate snapshot role
-	snapshotKey, err := cs.Create(data.CanonicalSnapshotRole, gun, data.ECDSAKey)
-	if err != nil {
-		return nil, err
-	}
-	snapshotRole := data.NewBaseRole(
-		data.CanonicalSnapshotRole,
-		notary.MinThreshold,
-		snapshotKey,
-	)
-
-	// Generate targets role
-	targetsKey, err := cs.Create(data.CanonicalTargetsRole, gun, data.ECDSAKey)
-	if err != nil {
-		return nil, err
-	}
-	targetsRole := data.NewBaseRole(
-		data.CanonicalTargetsRole,
-		notary.MinThreshold,
-		targetsKey,
-	)
-
-	// Generate timestamp role
-	timestampKey, err := cs.Create(data.CanonicalTimestampRole, gun, data.ECDSAKey)
-	if err != nil {
-		return nil, err
-	}
-	timestampRole := data.NewBaseRole(
-		data.CanonicalTimestampRole,
-		notary.MinThreshold,
-		timestampKey,
-	)
-
-	// Generate full repo
-	repo := tuf.NewRepo(cs)
-	err = repo.InitRoot(rootRole, timestampRole, snapshotRole, targetsRole, false)
-	if err != nil {
-		return nil, err
-	}
-
-	if _, err = repo.InitTargets(data.CanonicalTargetsRole); err != nil {
-		return nil, err
-	}
-	if err = repo.InitSnapshot(); err != nil {
-		return nil, err
-	}
-	if err = repo.InitTimestamp(); err != nil {
-		return nil, err
-	}
-
-	_, err = repo.SignRoot(data.DefaultExpires(data.CanonicalRootRole), nil)
-	if err != nil {
-		return nil, err
-	}
-	_, err = repo.SignTargets(data.CanonicalTargetsRole, data.DefaultExpires(data.CanonicalTargetsRole))
-	if err != nil {
-		return nil, err
-	}
-	_, err = repo.SignSnapshot(data.DefaultExpires(data.CanonicalSnapshotRole))
-	if err != nil {
-		return nil, err
-	}
-	_, err = repo.SignTimestamp(data.DefaultExpires(data.CanonicalTimestampRole))
-	if err != nil {
-		return nil, err
-	}
-
-	return repo, nil
-}
-
 // parseServerConfig parses the config file into a Config struct
 func parseServerConfig(configFilePath string) (context.Context, server.Config, error) {
 	config := viper.New()
@@ -354,12 +253,7 @@ func parseServerConfig(configFilePath string) (context.Context, server.Config, e
 	}
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, keyAlgo)
 
-	repo, err := generateQuayRoot(trust)
-	if err != nil {
-		return nil, server.Config{}, err
-	}
-
-	store, err := getStore(config, trust, repo, health.RegisterPeriodicFunc)
+	store, err := getStore(config, trust, health.RegisterPeriodicFunc)
 	if err != nil {
 		return nil, server.Config{}, err
 	}
@@ -384,6 +278,5 @@ func parseServerConfig(configFilePath string) (context.Context, server.Config, e
 		RepoPrefixes:                 prefixes,
 		CurrentCacheControlConfig:    currentCache,
 		ConsistentCacheControlConfig: consistentCache,
-		QuayRootRepo:                 repo,
 	}, nil
 }

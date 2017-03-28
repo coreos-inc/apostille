@@ -13,6 +13,7 @@ import (
 
 	"github.com/coreos-inc/apostille/auth"
 	"github.com/coreos-inc/apostille/storage"
+	"github.com/coreos-inc/apostille/storagetest"
 	testUtils "github.com/coreos-inc/apostille/test"
 	registryAuth "github.com/docker/distribution/registry/auth"
 	_ "github.com/docker/distribution/registry/auth/silly"
@@ -147,11 +148,8 @@ func TestMetricsEndpoint(t *testing.T) {
 // GetKeys supports only the timestamp and snapshot key endpoints
 func TestGetKeysEndpoint(t *testing.T) {
 	trust := testUtils.TrustServiceMock(t)
-	rootRepo := testUtils.CreateRepo(t, "quay-root", trust)
-	metaStore := storage.NewMultiplexingStore(notaryStorage.NewMemStorage(), trust, *rootRepo, storage.SignerRoot, storage.AlternateRoot, "targets/releases")
-
-	ctx := context.WithValue(
-		context.Background(), notary.CtxKeyMetaStore, metaStore)
+	metaStore := storagetest.MultiplexingMetaStoreMock(t, trust)
+	ctx := context.WithValue(context.Background(), notary.CtxKeyMetaStore, metaStore)
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, data.ED25519Key)
 
 	ac := auth.NewTestingAccessController("testUser")
@@ -182,8 +180,7 @@ func TestGetKeysEndpoint(t *testing.T) {
 // tests are located in /server/handlers/
 func TestGetRoleByHash(t *testing.T) {
 	trust := testUtils.TrustServiceMock(t)
-	rootRepo := testUtils.CreateRepo(t, "quay-root", trust)
-	metaStore := storage.NewMultiplexingStore(notaryStorage.NewMemStorage(), trust, *rootRepo, storage.SignerRoot, storage.AlternateRoot, "targets/releases")
+	metaStore := storagetest.MultiplexingMetaStoreMock(t, trust)
 	ts := data.SignedTimestamp{
 		Signatures: make([]data.Signature, 0),
 		Signed: data.Timestamp{
@@ -255,8 +252,7 @@ func TestGetRoleByHash(t *testing.T) {
 // tests are located in /server/handlers/
 func TestGetRoleByVersion(t *testing.T) {
 	trust := testUtils.TrustServiceMock(t)
-	rootRepo := testUtils.CreateRepo(t, "quay-root", trust)
-	metaStore := storage.NewMultiplexingStore(notaryStorage.NewMemStorage(), trust, *rootRepo, storage.SignerRoot, storage.AlternateRoot, "targets/releases")
+	metaStore := storagetest.MultiplexingMetaStoreMock(t, trust)
 
 	ts := data.SignedTimestamp{
 		Signatures: make([]data.Signature, 0),
@@ -326,8 +322,7 @@ func TestGetRoleByVersion(t *testing.T) {
 // tests are located in /server/handlers/
 func TestGetCurrentRole(t *testing.T) {
 	trust := testUtils.TrustServiceMock(t)
-	rootRepo := testUtils.CreateRepo(t, "quay-root", trust)
-	metaStore := storage.NewMultiplexingStore(notaryStorage.NewMemStorage(), trust, *rootRepo, storage.SignerRoot, storage.AlternateRoot, "targets/releases")
+	metaStore := storagetest.MultiplexingMetaStoreMock(t, trust)
 
 	metadata, _, err := testutils.NewRepoMetadata("gun")
 	require.NoError(t, err)
@@ -380,8 +375,7 @@ func verifyGetResponse(t *testing.T, r *http.Response, expectedBytes []byte) {
 // RotateKey supports only timestamp and snapshot key rotation
 func TestRotateKeyEndpoint(t *testing.T) {
 	trust := testUtils.TrustServiceMock(t)
-	rootRepo := testUtils.CreateRepo(t, "quay-root", trust)
-	metaStore := storage.NewMultiplexingStore(notaryStorage.NewMemStorage(), trust, *rootRepo, storage.SignerRoot, storage.AlternateRoot, "targets/releases")
+	metaStore := storagetest.MultiplexingMetaStoreMock(t, trust)
 
 	ctx := context.WithValue(
 		context.Background(), notary.CtxKeyMetaStore, metaStore)
@@ -413,8 +407,7 @@ func TestRotateKeyEndpoint(t *testing.T) {
 
 func TestValidationErrorFormat(t *testing.T) {
 	trust := testUtils.TrustServiceMock(t)
-	rootRepo := testUtils.CreateRepo(t, "quay-root", trust)
-	metaStore := storage.NewMultiplexingStore(notaryStorage.NewMemStorage(), trust, *rootRepo, storage.SignerRoot, storage.AlternateRoot, "targets/releases")
+	metaStore := storagetest.MultiplexingMetaStoreMock(t, trust)
 
 	ctx := context.WithValue(
 		context.Background(), notary.CtxKeyMetaStore, metaStore)
@@ -455,7 +448,7 @@ func TestSigningUserPushNonSignerPullSignerPull(t *testing.T) {
 	trust := testUtils.TrustServiceMock(t)
 	ac := auth.NewTestingAccessController("signer")
 	gun := data.GUN("quay.io/signingUser/testRepo")
-	server, client := testServerAndClient(t, "quay.io/*", gun, trust, ac)
+	server, client := testServerAndClient(t, gun, trust, ac)
 	defer server.Close()
 	repo := testUtils.CreateRepo(t, gun, trust)
 	rootJson, targetsJson, ssJson, _ := testUtils.PushRepo(t, repo, client)
@@ -476,7 +469,7 @@ func TestSigningUserPushSignerPullNonSignerPull(t *testing.T) {
 	trust := testUtils.TrustServiceMock(t)
 	ac := auth.NewTestingAccessController("signer")
 	gun := data.GUN("quay.io/signingUser/testRepo")
-	server, client := testServerAndClient(t, "quay.io/*", gun, trust, ac)
+	server, client := testServerAndClient(t, gun, trust, ac)
 	defer server.Close()
 	repo := testUtils.CreateRepo(t, gun, trust)
 	rootJson, targetsJson, ssJson, _ := testUtils.PushRepo(t, repo, client)
@@ -495,9 +488,8 @@ func TestSigningUserPushSignerPullNonSignerPull(t *testing.T) {
 	testUtils.RemoteEqual(t, client, data.CanonicalSnapshotRole, ssJson)
 }
 
-func testServerAndClient(t *testing.T, rootMetaName, gun data.GUN, trust signed.CryptoService, ac registryAuth.AccessController) (*httptest.Server, store.RemoteStore) {
-	rootRepo := testUtils.CreateRepo(t, rootMetaName, trust)
-	metaStore := storage.NewMultiplexingStore(notaryStorage.NewMemStorage(), trust, *rootRepo, storage.SignerRoot, storage.AlternateRoot, "targets/releases")
+func testServerAndClient(t *testing.T, gun data.GUN, trust signed.CryptoService, ac registryAuth.AccessController) (*httptest.Server, store.RemoteStore) {
+	metaStore := storagetest.MultiplexingMetaStoreMock(t, trust)
 	ctx := context.WithValue(context.Background(), notary.CtxKeyMetaStore, metaStore)
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, data.ED25519Key)
 
