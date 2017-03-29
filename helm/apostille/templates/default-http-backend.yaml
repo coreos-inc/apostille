@@ -2,6 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: default-http-backend
+  namespace: nginx-ingress
   labels:
     app: default-http-backend
 spec:
@@ -16,6 +17,7 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   name: default-http-backend
+  namespace: nginx-ingress
   labels:
     app: default-http-backend
 spec:

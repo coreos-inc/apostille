@@ -1,0 +1,25 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: apostille-signer-config
+  namespace: apostille
+data:
+  db.url: {{.Values.signer_db_url}}/signer
+  migrations.path: /go/src/github.com/docker/notary/migrations/signer/postgresql
+  notary.signer.timestamp.1.password: {{.Values.timestamp_password}}
+  signer-config.json: |
+    {
+      "server": {
+        "grpc_addr": ":7899",
+        "tls_cert_file": "/etc/secret/cert.crt",
+        "tls_key_file": "/etc/secret/cert.key",
+        "client_ca_file": "/etc/secret/ca.crt"
+      },
+      "logging": {
+        "level": "debug"
+      },
+      "storage": {
+        "backend": "postgres",
+        "db_url": "{{.Values.signer_db_url}}/signer"
+      }
+    }
