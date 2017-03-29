@@ -13,8 +13,8 @@ services:
     entrypoint: /usr/bin/env sh
     command: -c "./migrations/migrate.sh && apostille -config=fixtures/config.mysql.json"
     environment:
-      QUAY_ROOT: quay.dev/*
       DB_URL: mysql://server:12345@tcp(mysql:3306)/apostille
+      ROOT_DB_URL: mysql://server_root:54321@tcp(mysql:3306)/apostille_root
     depends_on:
       - notary_signer
       - mysql

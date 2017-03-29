@@ -19,6 +19,7 @@ services:
       QUAY_ROOT: quay.dev/*
       MIGRATIONS_PATH: migrations/postgresql
       DB_URL: postgres://server:12345@postgresql:5432/apostille?sslmode=disable
+      ROOT_DB_URL: postgres://server_root:54321@postgresql:5432/apostille_root?sslmode=disable
     depends_on:
       - notary_signer
       - postgresql
