@@ -17,7 +17,7 @@
 	"root_storage": {
 		"backend": "memory",
 		"root": "generate",
-		"rootGUN": "quay.dev",
+		"rootGUN": "quay.dev"
 	},
 	"auth": {
 		"type": "testing"

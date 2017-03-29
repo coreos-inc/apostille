@@ -22,7 +22,7 @@
     "backend": "mysql",
     "db_url": "server_root@tcp(mysql:3306)/apostille_root?parseTime=True",
     "root": "generate",
-    "rootGUN": "quay.io",
+    "rootGUN": "quay.io"
   },
   "auth": {
     "type": "quaytoken",

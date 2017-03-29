@@ -23,7 +23,7 @@
 		"backend": "mysql",
 		"db_url": "server_root:54321@tcp(mysql:3306)/apostille_root?parseTime=True",
 		"root": "generate",
-		"rootGUN": "quay.dev",
+		"rootGUN": "quay.dev"
 	},
 	"auth": {
 		"type": "testing"
