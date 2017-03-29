@@ -23,6 +23,7 @@ spec:
       labels:
         app: nginx
     spec:
+      serviceAccount: nginx-ingress-user
       containers:
       - image: gcr.io/google_containers/nginx-ingress-controller:0.8.3
         name: nginx
@@ -65,3 +66,22 @@ spec:
     name: https
   selector:
     app: nginx
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: nginx-ingress-user
+  namespace: nginx-ingress
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1alpha1
+metadata:
+  name: nginx-ingress
+subjects:
+  - kind: ServiceAccount
+    name: nginx-ingress-user
+    namespace: nginx-ingress
+roleRef:
+  kind: ClusterRole
+  name: user
+  apiGroup: rbac.authorization.k8s.io

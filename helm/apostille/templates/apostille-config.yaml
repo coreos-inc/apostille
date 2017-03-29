@@ -1,0 +1,57 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: apostille-config
+  namespace: apostille
+data:
+  config.prod.json: |
+    {
+      "server": {
+        "http_addr": ":4443"
+      },
+      "trust_service": {
+        "type": "remote",
+        "hostname": "localhost",
+        "port": "7899",
+        "tls_ca_file": "/etc/secret/ca.crt",
+        "key_algorithm": "ecdsa",
+        "tls_client_cert": "/etc/secret/client.crt",
+        "tls_client_key": "/etc/secret/client.key"
+      },
+      "logging": {
+        "level": "{{.Values.log_level}}" {{if .Values.db_logging}}, "db_logging": "on"{{end}}
+      },
+      "storage": {
+        "backend": "postgres",
+        "db_url": "{{.Values.db_url}}/apostille"
+      },
+      "root_storage": {
+        "backend": "postgres",
+        "db_url": "{{.Values.root_db_url}}/apostille_root",
+        {{if .Values.bootstrap}}
+        "root": "generate",
+        {{end}}
+        "rootGUN": "{{.Values.root_gun}}"
+      },
+      "auth": {
+        "type": "quaytoken",
+        "options": {
+          "realm": "https://quay.io:443",
+          "service": "quay.io",
+          "issuer": "quay",
+          "keyserver": "https://quay.io/keys",
+          "updateKeyInterval": "60s"
+        }
+      },
+      "repositories": {
+        "gun_prefixes": [
+          {{- range .Values.repo_prefixes }}
+          "quay.io/{{ . }}/",
+          {{- end }}
+          "quay.io/quay/"
+          ]
+      }
+    }
+  db.url: {{.Values.db_url}}/apostille
+  root.db.url: {{.Values.root_db_url}}/apostille_root
+  migrations.path: migrations/postgresql
