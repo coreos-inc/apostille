@@ -36,8 +36,8 @@ data:
       "auth": {
         "type": "quaytoken",
         "options": {
-          "realm": "https://quay.io:443",
-          "service": "quay.io",
+          "realm": "quay.io",
+          "service": "quay",
           "issuer": "quay",
           "keyserver": "https://quay.io/keys",
           "updateKeyInterval": "60s"
