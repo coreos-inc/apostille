@@ -1,5 +1,5 @@
-name: apostille
-version: 0.2.0
+name: apostille-app
+version: 0.2.3
 description: a image validation server for quay
 home: https://github.com/coreos-inc/apostille
 sources: 
