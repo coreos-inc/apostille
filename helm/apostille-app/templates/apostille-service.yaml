@@ -1,10 +1,10 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: apostille
-  namespace: apostille
+  name: {{ .Values.service }}
+  namespace: {{ .Values.apostille_namespace }}
   labels:
-    app: apostille
+    app: {{ .Values.service }}
 spec:
   ports:
     - name: default
@@ -12,5 +12,5 @@ spec:
       port: 4443
       targetPort: 4443
   selector:
-    app: apostille
+    app: {{ .Values.service }}
   type: ClusterIP

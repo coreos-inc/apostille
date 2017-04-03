@@ -1,8 +1,8 @@
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: apostille-signer-config
-  namespace: apostille
+  name: {{.Values.service}}-signer-config
+  namespace: {{ .Values.apostille_namespace }}
 data:
   db.url: {{.Values.signer_db_url}}/signer
   migrations.path: /go/src/github.com/docker/notary/migrations/signer/postgresql

@@ -1,8 +1,8 @@
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: apostille-config
-  namespace: apostille
+  name: {{.Values.service}}-config
+  namespace: {{.Values.apostille_namespace}}
 data:
   config.prod.json: |
     {
@@ -36,19 +36,19 @@ data:
       "auth": {
         "type": "quaytoken",
         "options": {
-          "realm": "quay.io",
+          "realm": "{{.Values.host}}",
           "service": "quay",
           "issuer": "quay",
-          "keyserver": "https://quay.io/keys",
+          "keyserver": "https://{{.Values.host}}/keys",
           "updateKeyInterval": "60s"
         }
       },
       "repositories": {
         "gun_prefixes": [
           {{- range .Values.repo_prefixes }}
-          "quay.io/{{ . }}/",
+          "{{.Values.host}}/{{ . }}/",
           {{- end }}
-          "quay.io/quay/"
+          "{{.Values.host}}/quay/"
           ]
       }
     }
