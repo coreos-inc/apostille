@@ -7,7 +7,20 @@ run:
   args:
     - -c
     - |
-      cd apostille-pull-request
+      export AWS_DEFAULT_REGION=us-east-1
+      export APOSTILLE_FILE_NAME=apostille.tar.gz
+      export APOSTILLE_FOLDER_NAME=apostille-pull-request
+      tar -cv apostille-pull-request | gzip > ${APOSTILLE_FILE_NAME}
+      cd ${APOSTILLE_FOLDER_NAME}
+
       export GIT_SHA=$(git rev-parse --short --verify HEAD)
-      echo "{\"commit\": \"${GIT_SHA}\", \"ref\": \"refs/heads/master\", \"default_branch\": \"master\" }" > post.json
-      curl -X POST -d @post.json https://%24token:ZPQ48DLUAJDUMP7CA31AHM7P7GAOQMMJY5PCP91YWLAJT8YK00SCGIA57PRLEDM8@quay.io/webhooks/push/trigger/a1ef738f-2468-46cc-b100-17c8c811a55a --header "Content-Type:application/json"
+
+      aws s3 cp ../apostille.tar.gz s3://test-apstille-gzip/${GIT_SHA}/${APOSTILLE_FILE_NAME}
+
+      export ARCHIVE_URL=`aws s3 presign s3://test-apstille-gzip/${GIT_SHA}/${APOSTILLE_FILE_NAME}`
+
+      for name in server.Dockerfile signer.Dockerfile
+      do
+        echo "{\"archive_url\":\"${ARCHIVE_URL}\",\"docker_tags\":[\"${GIT_SHA}-${name}\"],\"context\":\"/${APOSTILLE_FOLDER_NAME}\",\"dockerfile_path\":\"/${APOSTILLE_FOLDER_NAME}/${name}\"}" > post.json
+        curl -X POST -d @post.json https://quay.io/api/v1/repository/quay/apostille/build/ --header "Content-Type:application/json" --header "Authorization:Bearer ${QUAY_TOKEN}"
+      done
