@@ -67,6 +67,7 @@ jobs:
           task:  master-success
           image: docker-git
           file:  apostille-pull-request/ci/tasks/on_success_merge_master.yaml
+          params: {AWS_ACCESS_KEY_ID: "{{ apostille-key-id }}", AWS_SECRET_ACCESS_KEY: "{{ apostille-secret-access-key }}", QUAY_TOKEN: "{{ quay-token }}"}
         on_failure:
           task:  master-failure
           image: docker-git
