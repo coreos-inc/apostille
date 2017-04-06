@@ -9,10 +9,10 @@ metadata:
 spec:
   tls:
     - hosts:
-        - {{.Values.service}}.quay.io
+        - {{.Values.service_subdomain}}.quay.io
       secretName: {{.Values.service}}-apostille-tls
   rules:
-    - host: {{.Values.service}}.quay.io
+    - host: {{.Values.service_subdomain}}.quay.io
       http:
         paths:
           - path: /
