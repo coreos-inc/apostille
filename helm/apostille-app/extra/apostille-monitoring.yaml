@@ -1,0 +1,28 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ServiceMonitor
+metadata:
+  name: apostille
+  labels:
+    app: apostille
+spec:
+  selector:
+    matchLabels:
+      app: apostille
+  endpoints:
+  - port: default         # works for different port numbers as long as the name matches
+    interval: 10s         # scrape the endpoint every 10 seconds
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: Prometheus
+metadata:
+  name: apostille
+  labels:
+    prometheus: apostille
+spec:
+  version: v1.3.0
+  # Define that all ServiceMonitor TPRs with the label `app = apostille` should be included
+  # into the server's configuration.
+  serviceMonitors:
+  - selector:
+      matchLabels:
+        app: apostille
