@@ -5,6 +5,8 @@ metadata:
   namespace: {{ .Values.apostille_namespace }}
   labels:
     app: {{ .Values.service }}
+    annotations:
+      prometheus.io/scrape: 'true'
 spec:
   ports:
     - name: default
