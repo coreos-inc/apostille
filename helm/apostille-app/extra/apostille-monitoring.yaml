@@ -2,6 +2,7 @@ apiVersion: monitoring.coreos.com/v1alpha1
 kind: ServiceMonitor
 metadata:
   name: apostille
+  namespace: apostille
   labels:
     app: apostille
 spec:
@@ -16,6 +17,7 @@ apiVersion: monitoring.coreos.com/v1alpha1
 kind: Prometheus
 metadata:
   name: apostille
+  namespace: apostille
   labels:
     prometheus: apostille
 spec:
