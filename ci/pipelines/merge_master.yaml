@@ -71,4 +71,4 @@ jobs:
         on_failure:
           task:  master-failure
           image: docker-git
-          file:  apostille-pull-request/ci/tasks/on_success_merge_master.yaml
+          file:  apostille-pull-request/ci/tasks/on_failure_merge_master.yaml
