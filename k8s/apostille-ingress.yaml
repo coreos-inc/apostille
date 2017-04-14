@@ -1,0 +1,26 @@
+kind: Ingress
+apiVersion: extensions/v1beta1
+metadata:
+  name: apostille
+  namespace: apostille
+spec:
+  tls:
+    - hosts:
+        - apostille.quay.io
+        - quay.io
+      secretName: apostille-tls
+  rules:
+    - host: apostille.quay.io
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: apostille
+              servicePort: 4443
+    - host: quay.io
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: apostille
+              servicePort: 4443
