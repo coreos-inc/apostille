@@ -41,7 +41,7 @@ jobs:
           image_resource:
             type: docker-image
             source:
-              repository: quay.io/quay/docker-git
+              repository: quay.io/quay/apostille-build-util
           platform: linux
           outputs:
             - name: tag
@@ -86,7 +86,7 @@ jobs:
           image_resource:
             type: docker-image
             source:
-              repository: quay.io/quay/docker-git
+              repository: quay.io/quay/apostille-build-util
           platform: linux
           outputs:
             - name: tag
@@ -131,7 +131,7 @@ jobs:
           image_resource:
             type: docker-image
             source:
-              repository: quay.io/quay/docker-git
+              repository: quay.io/quay/apostille-build-util
           platform: linux
           outputs:
             - name: tag
