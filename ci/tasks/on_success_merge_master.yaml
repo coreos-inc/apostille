@@ -19,7 +19,7 @@ run:
 
       tar -cv apostille-pull-request | gzip > ${APOSTILLE_FILE_NAME}
 
-      aws s3 cp ../apostille.tar.gz s3://test-apstille-gzip/${GIT_SHA}/${APOSTILLE_FILE_NAME}
+      aws s3 cp ./apostille.tar.gz s3://test-apstille-gzip/${GIT_SHA}/${APOSTILLE_FILE_NAME}
 
       export ARCHIVE_URL=`aws s3 presign s3://test-apstille-gzip/${GIT_SHA}/${APOSTILLE_FILE_NAME}`
 
