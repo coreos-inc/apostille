@@ -13,10 +13,10 @@ resources:
       repository: quay.io/quay/apostille-build-image
       username: {{quay-robot-username}}
       password: {{quay-robot-password}}
-  - name: docker-git
+  - name: apostille-build-util
     type: docker-image
     source:
-      repository: quay.io/quay/docker-git
+      repository: quay.io/quay/apostille_build_util
       username: {{quay-robot-username}}
       password: {{quay-robot-password}}
   - name: apostille-pull-request
@@ -33,13 +33,13 @@ jobs:
     plan:
       - get: apostille-pull-request
         trigger: true
-      - get: docker-git
+      - get: apostille-build-util
       - task: tag
         config:
           image_resource:
             type: docker-image
             source:
-              repository: quay.io/quay/docker-git
+              repository: quay.io/quay/apostille-build-util
           platform: linux
           outputs:
             - name: tag
@@ -65,10 +65,10 @@ jobs:
           file: apostille-pull-request/ci/tasks/mysql.yaml
         on_success:
           task:  master-success
-          image: docker-git
+          image: apostille-build-util
           file:  apostille-pull-request/ci/tasks/on_success_merge_master.yaml
           params: {AWS_ACCESS_KEY_ID: {{apostille-key-id}}, AWS_SECRET_ACCESS_KEY: {{apostille-secret-access-key}}, QUAY_TOKEN: {{quay-token}} }
         on_failure:
           task:  master-failure
-          image: docker-git
+          image: apostille-build-util
           file:  apostille-pull-request/ci/tasks/on_failure_merge_master.yaml

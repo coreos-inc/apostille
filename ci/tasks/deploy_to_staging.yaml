@@ -1,0 +1,22 @@
+---
+platform: linux
+inputs:
+  - name: apostille-pull-request
+run:
+  path: /bin/sh
+  args:
+    - -c
+    - |
+      echo $KUBE_CTL_CONFIG | base64 --decode > /kube_config && export KUBECONFIG=/kube_config
+      export GIT_SHA=`cat /docker_inspect.json | jq '.[0].ContainerConfig.Labels.GIT_SHA'`
+      export BUILD_UUID=`cat /docker_inspect.json | jq '.[0].ContainerConfig.Labels.BUILD_UUID'`
+
+      helm init --client-only
+      cd apostille-pull-request/helm/apostille-app
+
+      git checkout GIT_SHA
+      export SEMVER=`git tag | sort -r | head -1 | sed 's/v//g'`-staging+${BUILD_UUID}
+      echo "version: ${SEMVER}" > Chart.yaml
+      helm registry push --namespace quay quay.io
+      export TAR_LOCATION=`helm registry pull quay.io/quay/apostille-app`
+      helm upgrade -f /quay-policies/tools/cloudconfig/static/helm-values/apostille-staging.yaml --set apostille_image=quay.io/quay/apostille:${GIT_SHA},signer_image=quay.io/apostille-signer:${GIT_SHA}  apostille ${TAR_LOCATION}
