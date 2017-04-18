@@ -1,7 +1,5 @@
 ---
 platform: linux
-inputs:
-  - name: apostille-pull-request
 run:
   path: /bin/sh
   args:
@@ -14,7 +12,7 @@ run:
       helm init --client-only
       cd apostille-pull-request/helm/apostille-app
 
-      git checkout GIT_SHA
+      git checkout $GIT_SHA
       export SEMVER=`git tag | sort -r | head -1 | sed 's/v//g'`-staging+${BUILD_UUID}
       echo "version: ${SEMVER}" > Chart.yaml
       helm registry push --namespace quay quay.io
