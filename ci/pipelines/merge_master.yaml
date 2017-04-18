@@ -16,7 +16,7 @@ resources:
   - name: apostille-build-util
     type: docker-image
     source:
-      repository: quay.io/quay/apostille_build_util
+      repository: quay.io/quay/apostille-build-util
       username: {{quay-robot-username}}
       password: {{quay-robot-password}}
   - name: apostille-pull-request

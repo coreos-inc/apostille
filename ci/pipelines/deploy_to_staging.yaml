@@ -48,10 +48,5 @@ jobs:
       - get: quay-policies
       - task: deploy_to_staging
         image: apostille-build-util
-        inputs:
-          - name: apostille-pull-request
-          - name: quay-policies
-          - name: signer
-          - name: server
         file: apostille-pull-request/ci/tasks/deploy_to_staging.yaml
         params: {KUBE_CTL_CONFIG: {{kubectl-config}} }
