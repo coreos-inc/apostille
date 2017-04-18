@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"errors"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/distribution/context"
 	registryAuth "github.com/docker/distribution/registry/auth"
@@ -18,6 +20,7 @@ import (
 )
 
 const TufRootSigner string = "com.apostille.root"
+const TufDisabled string = "$disabled"
 
 // keyserverAccessController implements the auth.AccessController interface.
 type keyserverAccessController struct {
@@ -178,6 +181,11 @@ func (ac *keyserverAccessController) Authorized(ctx context.Context, accessItems
 			challenge.err = registryToken.ErrInsufficientScope
 			return nil, challenge
 		}
+	}
+
+	if tokenContext.Context.TufRootSigner == TufDisabled {
+		challenge.err = errors.New("trust not enabled for repo")
+		return nil, challenge
 	}
 
 	return context.WithValue(ctx, TufRootSigner, tokenContext.Context.TufRootSigner), nil
