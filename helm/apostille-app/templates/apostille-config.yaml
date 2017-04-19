@@ -45,10 +45,11 @@ data:
       },
       "repositories": {
         "gun_prefixes": [
+          {{ $host := .Values.host }}
           {{- range .Values.repo_prefixes }}
-          "{{.Values.host}}/{{ . }}/",
+          "{{ $host }}/{{ . }}/",
           {{- end }}
-          "{{.Values.host}}/quay/"
+          "{{ .Values.host }}/quay/"
           ]
       }
     }

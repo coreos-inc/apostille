@@ -17,7 +17,7 @@ run:
       export GIT_SHA=$(git rev-parse --short --verify HEAD)
       echo "LABEL GIT_SHA=${GIT_SHA}" >> server.Dockerfile
       echo "LABEL GIT_SHA=${GIT_SHA}" >> signer.Dockerfile
-      ehco "LABEL BUILD_UUID=${BUILD_UUID}" >> server.Dockerfile
+      echo "LABEL BUILD_UUID=${BUILD_UUID}" >> server.Dockerfile
       echo "LABEL BUILD_UUID=${BUILD_UUID}" >> signer.Dockerfile
       cd ..
 

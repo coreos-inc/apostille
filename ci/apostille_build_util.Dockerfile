@@ -16,8 +16,8 @@ RUN apt-get update && apt-get -y upgrade && apt-get -y --fix-missing install bas
 
 RUN pip install --upgrade awscli
 
-RUN curl -LO https://kubernetes-helm.storage.googleapis.com/helm-v2.3.0-linux-amd64.tar.gz
-RUN tar -zxvf helm-v2.3.0-linux-amd64.tar.gz
+RUN curl -LO https://kubernetes-helm.storage.googleapis.com/helm-v2.2.3-linux-amd64.tar.gz
+RUN tar -zxvf helm-v2.2.3-linux-amd64.tar.gz
 RUN chmod 700 linux-amd64/helm
 RUN mv linux-amd64/helm /usr/local/bin/helm
 
