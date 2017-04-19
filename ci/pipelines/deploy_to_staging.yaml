@@ -49,4 +49,4 @@ jobs:
       - task: deploy_to_staging
         image: apostille-build-util
         file: apostille-pull-request/ci/tasks/deploy_to_staging.yaml
-        params: {KUBE_CTL_CONFIG: {{kubectl-config}} }
+        params: {KUBE_CTL_CONFIG: {{kubectl-config}}, QUAY_APP_USERNAME: {{quay-app-username}}, QUAY_APP_PASSWORD: {{quay-app-password}}  }
