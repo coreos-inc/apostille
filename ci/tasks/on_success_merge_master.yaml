@@ -27,8 +27,8 @@ run:
 
       export ARCHIVE_URL=`aws s3 presign s3://test-apstille-gzip/${GIT_SHA}/${APOSTILLE_FILE_NAME}`
 
-      echo "{\"archive_url\":\"${ARCHIVE_URL}\",\"docker_tags\":[\"${GIT_SHA}\", \"${BUILD_UUID}\", "latest"],\"context\":\"/${APOSTILLE_FOLDER_NAME}\",\"dockerfile_path\":\"/${APOSTILLE_FOLDER_NAME}/server.Dockerfile\"}" > post.json
+      echo "{\"archive_url\":\"${ARCHIVE_URL}\",\"docker_tags\":[\"${GIT_SHA}\", \"${BUILD_UUID}\", \"latest\"],\"context\":\"/${APOSTILLE_FOLDER_NAME}\",\"dockerfile_path\":\"/${APOSTILLE_FOLDER_NAME}/server.Dockerfile\"}" > post.json
       curl -X POST -d @post.json https://quay.io/api/v1/repository/quay/apostille/build/ --header "Content-Type:application/json" --header "Authorization:Bearer ${QUAY_TOKEN}"
 
-      echo "{\"archive_url\":\"${ARCHIVE_URL}\",\"docker_tags\":[\"${GIT_SHA}\", \"${BUILD_UUID}\", "latest"],\"context\":\"/${APOSTILLE_FOLDER_NAME}\",\"dockerfile_path\":\"/${APOSTILLE_FOLDER_NAME}/signer.Dockerfile\"}" > post.json
+      echo "{\"archive_url\":\"${ARCHIVE_URL}\",\"docker_tags\":[\"${GIT_SHA}\", \"${BUILD_UUID}\", \"latest\"],\"context\":\"/${APOSTILLE_FOLDER_NAME}\",\"dockerfile_path\":\"/${APOSTILLE_FOLDER_NAME}/signer.Dockerfile\"}" > post.json
       curl -X POST -d @post.json https://quay.io/api/v1/repository/quay/apostille-signer/build/ --header "Content-Type:application/json" --header "Authorization:Bearer ${QUAY_TOKEN}"
