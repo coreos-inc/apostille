@@ -30,7 +30,7 @@ run:
 
         helm registry login -u $QUAY_APP_USERNAME -p $QUAY_APP_PASSWORD quay.io
         helm registry push --namespace quay quay.io
-        helm upgrade -f ../../../quay-policies/tools/cloudconfig/static/helm-values/apostille-staging.yaml --set apostille_image=quay.io/quay/apostille:${SERVER_GIT_SHA},signer_image=quay.io/apostille-signer:${SIGNER_GIT_SHA}  apostille .
+        helm upgrade -f ../../../quay-policies/tools/cloudconfig/static/helm-values/apostille-staging.yaml --set apostille_image=quay.io/quay/apostille:${SERVER_GIT_SHA},signer_image=quay.io/apostille-signer:${SIGNER_GIT_SHA}  apostille-staging .
 
         exit 0
       else

@@ -1,8 +1,8 @@
 kind: Deployment
 apiVersion: extensions/v1beta1
 metadata:
-  name: apostille
-  namespace: apostille
+  name: {{.Values.service}}
+  namespace: {{.Values.apostille_namespace}}
   labels:
     app: apostille
 spec:
