@@ -36,13 +36,12 @@ resources:
 
 jobs:
   - name: deploy-to-staging
-    max_in_flight: 1
+    max_in_flight: 2
     plan:
       - aggregate:
         - get: signer
-          trigger: true
         - get: server
-          trigger: true
+        trigger: true
       - get: apostille-pull-request
       - get: apostille-build-util
       - get: quay-policies

@@ -10,7 +10,8 @@ run:
   args:
     - -c
     - |
-      echo $KUBE_CTL_CONFIG | base64 --decode > /kube_config && export KUBECONFIG=/kube_config
+      set -x
+      echo $KUBE_CTL_CONFIG | tr -d '\n' | base64 --decode > /kube_config && export KUBECONFIG=/kube_config
 
       export SIGNER_GIT_SHA=`cat signer/docker_inspect.json | jq --raw-output '.[0].ContainerConfig.Labels.GIT_SHA'`
       export SIGNER_BUILD_UUID=`cat signer/docker_inspect.json | jq --raw-output '.[0].ContainerConfig.Labels.BUILD_UUID'`
