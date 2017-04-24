@@ -3,7 +3,7 @@ FROM golang:1.7.3-alpine
 RUN apk add --update git gcc libc-dev && rm -rf /var/cache/apk/*
 
 # Install SQL DB migration tool
-RUN go get github.com/mattes/migrate
+RUN go get github.com/mattes/migrate  # APR24-2017
 RUN go get github.com/docker/notary/cmd/notary-signer
 
 
