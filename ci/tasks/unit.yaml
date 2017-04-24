@@ -7,5 +7,5 @@ run:
   args:
     - -c
     - |
-      set -ex
+      set -x
       /usr/bin/make --directory=/go/src/github.com/coreos-inc/apostille test
