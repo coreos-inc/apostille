@@ -1,9 +1,11 @@
 FROM golang:1.7.3-alpine
 
-RUN apk add --update git gcc libc-dev && rm -rf /var/cache/apk/*
+RUN apk add --update curl git gcc libc-dev && rm -rf /var/cache/apk/*
+ENV PATH $GOPATH/bin:/usr/local/go/bin:/usr/local/bin:$PATH
 
 # Install SQL DB migration tool
-RUN go get github.com/mattes/migrate
+RUN curl -L https://github.com/mattes/migrate/releases/download/v3.0.0/migrate.linux-amd64.tar.gz | tar xvz && \
+    mv migrate.linux-amd64 /usr/local/bin/migrate
 RUN go get github.com/docker/notary/cmd/notary-signer
 
 
