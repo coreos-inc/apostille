@@ -6,7 +6,7 @@ inputs:
   - name: signer
   - name: server
 run:
-  path: /bin/sh
+  path: /bin/bash
   args:
     - -c
     - |
