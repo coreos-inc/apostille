@@ -2,6 +2,7 @@ FROM golang:1.7.3-alpine
 MAINTAINER Evan Cordell "cordell.evan@gmail.com"
 
 RUN apk add --update curl git gcc libc-dev ca-certificates && rm -rf /var/cache/apk/*
+ENV PATH $GOPATH/bin:/usr/local/go/bin:/usr/local/bin:$PATH
 
 # Install SQL DB migration tool
 RUN curl -L https://github.com/mattes/migrate/releases/download/v3.0.0/migrate.linux-amd64.tar.gz | tar xvz && \
