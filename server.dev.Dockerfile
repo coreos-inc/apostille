@@ -2,11 +2,11 @@ FROM golang:1.7.3-alpine
 MAINTAINER Evan Cordell "cordell.evan@gmail.com"
 
 RUN apk add --update curl git gcc libc-dev ca-certificates && rm -rf /var/cache/apk/*
-ENV PATH $GOPATH/bin:/usr/local/go/bin:/usr/local/bin:$PATH
 
 # Install SQL DB migration tool
-RUN curl -L https://github.com/mattes/migrate/releases/download/v3.0.0/migrate.linux-amd64.tar.gz | tar xvz && \
-    mv migrate.linux-amd64 /usr/local/bin/migrate
+RUN git clone -b v1 https://github.com/mattes/migrate.git /go/src/github.com/mattes/migrate/
+RUN go get -u -v github.com/mattes/migrate && \
+    go build -tags 'mysql' -o /usr/local/bin/migrate github.com/mattes/migrate
 
 ENV APOSTILLE_SRC github.com/coreos-inc/apostille
 
