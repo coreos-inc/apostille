@@ -99,6 +99,7 @@ jobs:
       - put: build-image
         params: {build: apostille-pull-request, tag: tag/name}
       - get: build-image
+        params: {tag: tag/name}
       - task: postgres
         privileged: true
         image: build-image

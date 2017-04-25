@@ -4,7 +4,7 @@ MAINTAINER Evan Cordell "cordell.evan@gmail.com"
 RUN apk add --update curl git gcc libc-dev ca-certificates && rm -rf /var/cache/apk/*
 
 # Install SQL DB migration tool
-RUN curl -L https://github.com/mattes/migrate/releases/download/$version/migrate.linux-amd64.tar.gz | tar xvz && \
+RUN curl -L https://github.com/mattes/migrate/releases/download/v3.0.0/migrate.linux-amd64.tar.gz | tar xvz && \
     mv migrate.linux-amd64 /usr/local/bin/migrate
 
 ENV APOSTILLE_SRC github.com/coreos-inc/apostille
