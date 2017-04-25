@@ -1,9 +1,11 @@
 FROM golang:1.7.3-alpine
 
-RUN apk add --update git gcc libc-dev && rm -rf /var/cache/apk/*
+RUN apk add --update curl git openssh-client gcc libc-dev && rm -rf /var/cache/apk/*
 
 # Install SQL DB migration tool
-RUN go get github.com/mattes/migrate
+RUN git clone -b v1 https://github.com/mattes/migrate.git /go/src/github.com/mattes/migrate/
+RUN go get -u -v github.com/mattes/migrate && \
+    go build -tags 'mysql' -o /usr/local/bin/migrate github.com/mattes/migrate
 RUN go get github.com/docker/notary/cmd/notary-signer
 
 
