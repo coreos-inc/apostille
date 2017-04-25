@@ -43,8 +43,9 @@ RUN set -ex \
 	&& ./make.bash \
 	\
 	&& rm -rf /*.patch \
-	&& go get github.com/mattes/migrate \
-	&& mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH" \
+    && curl -L https://github.com/mattes/migrate/releases/download/v3.0.0/migrate.linux-amd64.tar.gz | tar xvz \
+    && mv migrate.linux-amd64 /usr/local/bin/migrate \
+    && mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH" \
 	&& cd /go/src/${APOSTILLE_SRC} \
 	&& mv ./fixtures / \
 	&& mkdir -p /fixtures/notary \
