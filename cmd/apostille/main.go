@@ -34,7 +34,6 @@ func main() {
 	if err != nil {
 		logrus.Fatal(err.Error())
 	}
-	return
 }
 
 func usage() {
