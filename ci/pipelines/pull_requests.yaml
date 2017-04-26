@@ -55,8 +55,6 @@ jobs:
                           echo unit-$(git rev-parse --short --verify HEAD) > ../tag/name"]
       - put: build-image
         params: {build: apostille-pull-request, tag: tag/name}
-      - get: build-image
-        params: {tag: tag/name}
       - task: unit
         image: build-image
         file: apostille-pull-request/ci/tasks/unit.yaml
@@ -103,8 +101,6 @@ jobs:
                           echo postgres-$(git rev-parse --short --verify HEAD) > ../tag/name"]
       - put: build-image
         params: {build: apostille-pull-request, tag: tag/name}
-      - get: build-image
-        params: {tag: tag/name}
       - task: postgres
         privileged: true
         image: build-image
@@ -151,8 +147,6 @@ jobs:
                           echo mysql-$(git rev-parse --short --verify HEAD) > ../tag/name"]
       - put: build-image
         params: {build: apostille-pull-request, tag: tag/name}
-      - get: build-image
-        params: {tag: tag/name}
       - task: mysql
         privileged: true
         image: build-image
