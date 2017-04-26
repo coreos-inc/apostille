@@ -23,9 +23,10 @@ run:
 
       echo "version: ${SEMVER}" >> Chart.yaml
 
-      #helm registry login -u $QUAY_APP_USERNAME -p $QUAY_APP_PASSWORD quay.io
-      #helm registry push --namespace quay quay.io
+      helm registry login -u $QUAY_APP_USERNAME -p $QUAY_APP_PASSWORD quay.io
+      helm registry push --namespace quay quay.io
 
-      #helm upgrade  -f ../../../quay-policies/tools/cloudconfig/static/helm-values/apostille.yaml \
-      #              --set apostille_image=quay.io/quay/apostille:${GIT_SHA},signer_image=quay.io/apostille-signer:${GIT_SHA} \
-      #              apostille .
+      helm upgrade  -f ../../../quay-policies/tools/cloudconfig/static/helm-values/apostille.yaml \
+                    --set apostille_image=quay.io/quay/apostille:${GIT_SHA},signer_image=quay.io/apostille-signer:${GIT_SHA} \
+                    --install
+                    apostille .
