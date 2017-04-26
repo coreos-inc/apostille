@@ -1,0 +1,31 @@
+---
+platform: linux
+inputs:
+  - name: gh-release
+  - name: quay-policies
+run:
+  path: /bin/sh
+  args:
+    - -c
+    - |
+      echo $KUBE_CTL_CONFIG | tr -d '\n' | base64 --decode > /kube_config && export KUBECONFIG=/kube_config
+
+
+      helm init --client-only
+      export SEMVER=`cat gh-release/version | sed 's/v//g'`
+      export TAG=`cat gh-release/tag`
+
+      cd gh-release/helm/apostille-app
+
+      export GIT_SHA=`git rev-list --abbrev-commit -n $TAG`
+
+      git checkout $GIT_SHA
+
+      echo "version: ${SEMVER}" >> Chart.yaml
+
+      #helm registry login -u $QUAY_APP_USERNAME -p $QUAY_APP_PASSWORD quay.io
+      #helm registry push --namespace quay quay.io
+
+      #helm upgrade  -f ../../../quay-policies/tools/cloudconfig/static/helm-values/apostille.yaml \
+      #              --set apostille_image=quay.io/quay/apostille:${GIT_SHA},signer_image=quay.io/apostille-signer:${GIT_SHA} \
+      #              apostille .
