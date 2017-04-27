@@ -21,7 +21,7 @@ spec:
               "name": "migrate-apostille",
               "image": "{{.Values.apostille_image}}",
               "imagePullPolicy": "IfNotPresent",
-              "command": ["/bin/sh", "-c", "./migrations/migrate.sh"],
+              "command": ["/bin/sh", "-c", "/go/src/github.com/coreos-inc/apostille/migrations/migrate.sh"],
               "env": [
                 {
                   "name": "DB_URL",
