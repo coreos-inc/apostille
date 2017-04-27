@@ -15,9 +15,9 @@ run:
       export SEMVER=`cat gh-release/version | sed 's/v//g'`
       export TAG=`cat gh-release/tag`
 
-      cd gh-release/helm/apostille-app
+      cd apostille-code/helm/apostille-app
 
-      export GIT_SHA=`git rev-list --abbrev-commit -n $TAG`
+      export GIT_SHA=`git rev-list --abbrev-commit -n 1 $TAG`
 
       git checkout $GIT_SHA
 

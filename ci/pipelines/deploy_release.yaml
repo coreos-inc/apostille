@@ -11,6 +11,13 @@ resources:
       uri: git@github.com:coreos-inc/quay-policies.git
       branch: master
       private_key: {{quay-policies-git-private-key}}
+  - name: apostille-code
+    type: git
+    source:
+      uri: git@github.com:coreos-inc/apostille.git
+      branch: master
+      private_key: {{quay-git-private-key}}
+      disable_ci_skip: true
 
 jobs:
   - name: deploy_release
@@ -21,5 +28,5 @@ jobs:
       - get: quay-policies
       - task: deploy_release
         image: apostille-build-util
-        file: deploy_release/ci/tasks/deploy_release.yaml
+        file: apostille-code/ci/tasks/deploy_release.yaml
         params: {KUBE_CTL_CONFIG: {{kubectl-config}}, QUAY_APP_USERNAME: {{quay-app-username}}, QUAY_APP_PASSWORD: {{quay-app-password}} }
