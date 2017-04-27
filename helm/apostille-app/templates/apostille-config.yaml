@@ -1,7 +1,7 @@
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: {{.Values.service}}-config
+  name: apostille-config
   namespace: {{.Values.apostille_namespace}}
 data:
   config.prod.json: |

@@ -1,7 +1,7 @@
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: {{.Values.service}}-signer-config
+  name: apostille-signer-config
   namespace: {{ .Values.apostille_namespace }}
 data:
   db.url: {{.Values.signer_db_url}}/signer
