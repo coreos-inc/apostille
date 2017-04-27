@@ -95,9 +95,9 @@ spec:
               - key: signer-config.json
                 path: config.json
             defaultMode: 420
-        - name: apostille-server-secrets
+        - name: apostille-server-secret
           secret:
-            secretName: apostille-server-secrets
+            secretName: apostille-server-secret
             items:
               - key: tls_ca
                 path: ca.crt
@@ -105,9 +105,9 @@ spec:
                 path: client.crt
               - key: tls_client_key
                 path: client.key
-        - name: apostille-signer-secrets
+        - name: apostille-signer-secret
           secret:
-            secretName: apostille-signer-secrets
+            secretName: apostille-signer-secret
             items:
               - key: client_ca_file
                 path: ca.crt
@@ -141,7 +141,7 @@ spec:
           volumeMounts:
             - name: apostille-config
               mountPath: /etc/config
-            - name: apostille-server-secrets
+            - name: apostille-server-secret
               mountPath: /etc/secret
           image: "{{.Values.apostille_image}}"
         - resources: {}
@@ -171,7 +171,7 @@ spec:
           volumeMounts:
             - name: apostille-signer-config
               mountPath: /etc/config
-            - name: apostille-signer-secrets
+            - name: apostille-signer-secret
               mountPath: /etc/secret
           image: "{{.Values.signer_image}}"
       restartPolicy: Always
