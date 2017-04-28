@@ -55,4 +55,4 @@ data:
     }
   db.url: {{.Values.db_url}}/apostille
   root.db.url: {{.Values.root_db_url}}/apostille_root
-  migrations.path: migrations/postgresql
+  migrations.path: /migrations/postgresql
