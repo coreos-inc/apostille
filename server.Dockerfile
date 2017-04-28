@@ -46,6 +46,7 @@ RUN set -ex \
 	&& git clone -b v1 https://github.com/mattes/migrate.git /go/src/github.com/mattes/migrate/ \
 	&& go get -u -v github.com/mattes/migrate \
     && go build -tags 'mysql' -o /usr/local/bin/migrate github.com/mattes/migrate \
+    && mv /go/src/${APOSTILLE_SRC}/migrations /migrations \
     && mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH" \
 	&& cd /go/src/${APOSTILLE_SRC} \
 	&& mv ./fixtures / \
