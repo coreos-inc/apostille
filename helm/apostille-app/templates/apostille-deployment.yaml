@@ -9,12 +9,12 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: apostille
+      app: {{.Values.service}}
   template:
     metadata:
-      namespace: apostille
+      namespace: {{.Values.service}}
       labels:
-        app: apostille
+        app: {{.Values.service}}
       annotations:
         pod.beta.kubernetes.io/init-containers: '[
             {
