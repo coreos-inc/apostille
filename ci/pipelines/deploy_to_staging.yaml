@@ -40,8 +40,9 @@ jobs:
     plan:
       - aggregate:
         - get: signer
+          trigger: true
         - get: server
-        trigger: true
+          trigger: true
       - get: apostille-pull-request
       - get: apostille-build-util
       - get: quay-policies
