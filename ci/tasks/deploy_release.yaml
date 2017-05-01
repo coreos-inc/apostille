@@ -29,5 +29,5 @@ run:
 
       helm upgrade  -f ../../../quay-policies/tools/cloudconfig/static/helm-values/apostille.yaml \
                     --set apostille_image=quay.io/quay/apostille:${GIT_SHA},signer_image=quay.io/quay/apostille-signer:${GIT_SHA} \
-                    --install
+                    --install \
                     apostille .
