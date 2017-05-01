@@ -27,7 +27,7 @@ run:
       helm registry login -u $QUAY_APP_USERNAME -p $QUAY_APP_PASSWORD quay.io
       helm registry push --namespace quay quay.io
 
-      helm upgrade  -f ../../../quay-policies/tools/cloudconfig/static/helm-values/apostille.yaml \
+      helm upgrade  -f ../../../quay-policies/tools/cloudconfig/static/helm-values/apostille-prod.yaml \
                     --set apostille_image=quay.io/quay/apostille:${GIT_SHA},signer_image=quay.io/quay/apostille-signer:${GIT_SHA} \
                     --install \
                     apostille .
