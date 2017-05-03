@@ -142,21 +142,37 @@ func CreateRepo(t *testing.T, gun data.GUN, cs signed.CryptoService) *tuf.Repo {
 	return repo
 }
 
-func PushRepo(t *testing.T, repo *tuf.Repo, client store.RemoteStore) ([]byte, []byte, []byte, []byte) {
-	r, tg, sn, ts, err := testutils.Sign(repo)
-	require.NoError(t, err)
-	rootJson, targetsJson, ssJson, tsJson, err := testutils.Serialize(r, tg, sn, ts)
+func AddDelegationToRepo(t *testing.T, gun data.GUN, cs signed.CryptoService, repo *tuf.Repo, delegationName data.RoleName) *tuf.Repo {
+	delegationKey, err := cs.Create(delegationName, gun, data.ECDSAKey)
 	require.NoError(t, err)
 
-	err = client.SetMulti(map[string][]byte{
-		data.CanonicalRootRole.String():      rootJson,
-		data.CanonicalTargetsRole.String():   targetsJson,
-		data.CanonicalSnapshotRole.String():  ssJson,
-		data.CanonicalTimestampRole.String(): tsJson,
-	})
+	// Add delegation to parent
+	err = repo.UpdateDelegationKeys(delegationName, []data.PublicKey{delegationKey}, []string{}, 1)
+	require.NoError(t, err)
+	err = repo.UpdateDelegationPaths(delegationName, []string{""}, []string{}, false)
 	require.NoError(t, err)
 
-	return rootJson, targetsJson, ssJson, tsJson
+	// Create child targets file
+	delegatedTargets, err := repo.InitTargets(delegationName)
+	require.NoError(t, err)
+	delegatedTargetsSigned, err := delegatedTargets.ToSigned()
+	require.NoError(t, err)
+	require.NoError(t, repo.UpdateSnapshot(delegationName, delegatedTargetsSigned))
+	return repo
+}
+
+func PushRepo(t *testing.T, repo *tuf.Repo, client store.RemoteStore) map[data.RoleName][]byte {
+	meta, err := testutils.SignAndSerialize(repo)
+	require.NoError(t, err)
+
+	stringMeta := make(map[string][]byte, len(meta))
+	for role, data := range meta {
+		stringMeta[role.String()] = data
+	}
+
+	err = client.SetMulti(stringMeta)
+	require.NoError(t, err)
+	return meta
 }
 
 func RemoteEqual(t *testing.T, client store.RemoteStore, role data.RoleName, metadata []byte) {
