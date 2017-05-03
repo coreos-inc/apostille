@@ -1,5 +1,5 @@
-hash: 665d3b41e93f1d164c47b54adc5fbc60d8d3d8ea0b90a81663918956d3f4b204
-updated: 2017-03-17T07:29:44.290816217-04:00
+hash: 981efae2a89f7a2938a215c784f6100ba9e25cb3f2f3482231c7377dac7d1b96
+updated: 2017-05-03T11:17:28.471099217-04:00
 imports:
 - name: github.com/agl/ed25519
   version: 278e1ec8e8a6e017cd07577924d6766039146ced
@@ -47,7 +47,7 @@ imports:
 - name: github.com/docker/libtrust
   version: fa567046d9b14f6aa788882a950d69651d230b21
 - name: github.com/docker/notary
-  version: b6b8ff7acbd214b88e57d47715764546533fdab8
+  version: fcb23a8788258f5afe451018321d85c0047ab8d5
   repo: git@github.com:ecordell/notary.git
   subpackages:
   - cryptoservice

@@ -451,18 +451,18 @@ func TestSigningUserPushNonSignerPullSignerPull(t *testing.T) {
 	server, client := testServerAndClient(t, gun, trust, ac)
 	defer server.Close()
 	repo := servertest.CreateRepo(t, gun, trust)
-	rootJson, targetsJson, ssJson, _ := servertest.PushRepo(t, repo, client)
+	meta := servertest.PushRepo(t, repo, client)
 
-	servertest.RemoteEqual(t, client, data.CanonicalRootRole, rootJson)
-	servertest.RemoteEqual(t, client, data.CanonicalTargetsRole, targetsJson)
-	servertest.RemoteEqual(t, client, data.CanonicalSnapshotRole, ssJson)
+	servertest.RemoteEqual(t, client, data.CanonicalRootRole, meta[data.CanonicalRootRole])
+	servertest.RemoteEqual(t, client, data.CanonicalTargetsRole, meta[data.CanonicalTargetsRole])
+	servertest.RemoteEqual(t, client, data.CanonicalSnapshotRole, meta[data.CanonicalSnapshotRole])
 
 	ac.TUFRoot = "quay"
 
-	servertest.RemoteNotEqual(t, client, data.CanonicalRootRole, rootJson)
-	servertest.RemoteNotEqual(t, client, data.CanonicalTargetsRole, targetsJson)
-	servertest.RemoteNotEqual(t, client, data.CanonicalSnapshotRole, ssJson)
-	servertest.RemoteEqual(t, client, "targets/releases", targetsJson)
+	servertest.RemoteNotEqual(t, client, data.CanonicalRootRole, meta[data.CanonicalRootRole])
+	servertest.RemoteNotEqual(t, client, data.CanonicalTargetsRole, meta[data.CanonicalTargetsRole])
+	servertest.RemoteNotEqual(t, client, data.CanonicalSnapshotRole, meta[data.CanonicalSnapshotRole])
+	servertest.RemoteEqual(t, client, "targets/releases", meta[data.CanonicalTargetsRole])
 }
 
 func TestSigningUserPushSignerPullNonSignerPull(t *testing.T) {
@@ -472,20 +472,46 @@ func TestSigningUserPushSignerPullNonSignerPull(t *testing.T) {
 	server, client := testServerAndClient(t, gun, trust, ac)
 	defer server.Close()
 	repo := servertest.CreateRepo(t, gun, trust)
-	rootJson, targetsJson, ssJson, _ := servertest.PushRepo(t, repo, client)
+	meta := servertest.PushRepo(t, repo, client)
 
 	ac.TUFRoot = "quay"
 
-	servertest.RemoteNotEqual(t, client, data.CanonicalRootRole, rootJson)
-	servertest.RemoteNotEqual(t, client, data.CanonicalTargetsRole, targetsJson)
-	servertest.RemoteNotEqual(t, client, data.CanonicalSnapshotRole, ssJson)
-	servertest.RemoteEqual(t, client, "targets/releases", targetsJson)
+	servertest.RemoteNotEqual(t, client, data.CanonicalRootRole, meta[data.CanonicalRootRole])
+	servertest.RemoteNotEqual(t, client, data.CanonicalTargetsRole, meta[data.CanonicalTargetsRole])
+	servertest.RemoteNotEqual(t, client, data.CanonicalSnapshotRole, meta[data.CanonicalSnapshotRole])
+	servertest.RemoteEqual(t, client, "targets/releases", meta[data.CanonicalTargetsRole])
 
 	ac.TUFRoot = "signer"
 
-	servertest.RemoteEqual(t, client, data.CanonicalRootRole, rootJson)
-	servertest.RemoteEqual(t, client, data.CanonicalTargetsRole, targetsJson)
-	servertest.RemoteEqual(t, client, data.CanonicalSnapshotRole, ssJson)
+	servertest.RemoteEqual(t, client, data.CanonicalRootRole, meta[data.CanonicalRootRole])
+	servertest.RemoteEqual(t, client, data.CanonicalTargetsRole, meta[data.CanonicalTargetsRole])
+	servertest.RemoteEqual(t, client, data.CanonicalSnapshotRole, meta[data.CanonicalSnapshotRole])
+}
+
+func TestSigningUserPushWithDelegations(t *testing.T) {
+	trust := servertest.TrustServiceMock(t)
+	ac := auth.NewTestingAccessController("signer")
+	gun := data.GUN("quay.io/signingUser/testRepo")
+	server, client := testServerAndClient(t, gun, trust, ac)
+	defer server.Close()
+	repo := servertest.CreateRepo(t, gun, trust)
+	repo = servertest.AddDelegationToRepo(t, gun, trust, repo, "targets/ci")
+	meta := servertest.PushRepo(t, repo, client)
+
+	ac.TUFRoot = "quay"
+
+	servertest.RemoteNotEqual(t, client, data.CanonicalRootRole, meta[data.CanonicalRootRole])
+	servertest.RemoteNotEqual(t, client, data.CanonicalTargetsRole, meta[data.CanonicalTargetsRole])
+	servertest.RemoteNotEqual(t, client, data.CanonicalSnapshotRole, meta[data.CanonicalSnapshotRole])
+	servertest.RemoteEqual(t, client, "targets/releases", meta[data.CanonicalTargetsRole])
+	servertest.RemoteEqual(t, client, "targets/ci", meta[data.RoleName("targets/ci")])
+
+	ac.TUFRoot = "signer"
+
+	servertest.RemoteEqual(t, client, data.CanonicalRootRole, meta[data.CanonicalRootRole])
+	servertest.RemoteEqual(t, client, data.CanonicalTargetsRole, meta[data.CanonicalTargetsRole])
+	servertest.RemoteEqual(t, client, data.CanonicalSnapshotRole, meta[data.CanonicalSnapshotRole])
+	servertest.RemoteEqual(t, client, "targets/ci", meta[data.RoleName("targets/ci")])
 }
 
 func testServerAndClient(t *testing.T, gun data.GUN, trust signed.CryptoService, ac registryAuth.AccessController) (*httptest.Server, store.RemoteStore) {
