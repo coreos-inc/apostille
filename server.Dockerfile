@@ -21,9 +21,7 @@ RUN set -ex \
         make \
         curl \
 	\
-	&& git clone -b v1 https://github.com/mattes/migrate.git /go/src/github.com/mattes/migrate/ \
-	&& go get -u -v github.com/mattes/migrate \
-    && go build -tags 'mysql' -o /usr/local/bin/migrate github.com/mattes/migrate \
+	&& go get -tags 'mysql postgres file' github.com/mattes/migrate/cli && mv /go/bin/cli /go/bin/migrate \
     && mv /go/src/${APOSTILLE_SRC}/migrations /migrations \
     && mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH" \
 	&& cd /go/src/${APOSTILLE_SRC} \
