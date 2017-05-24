@@ -5,12 +5,6 @@ resources:
       user: coreos-inc
       repository: apostille
       access_token: {{quay-github-token}}
-  - name: quay-policies
-    type: git
-    source:
-      uri: git@github.com:coreos-inc/quay-policies.git
-      branch: master
-      private_key: {{quay-policies-git-private-key}}
   - name: apostille-code
     type: git
     source:
@@ -31,10 +25,12 @@ jobs:
     plan:
       - get: gh-release
         trigger: true
-      - get: quay-policies
       - get: apostille-code
       - get: apostille-build-util
       - task: deploy_release
         image: apostille-build-util
         file: apostille-code/ci/tasks/deploy_release.yaml
-        params: {KUBE_CTL_CONFIG: {{kubectl-config}}, QUAY_APP_USERNAME: {{quay-app-username}}, QUAY_APP_PASSWORD: {{quay-app-password}} }
+        params: {KUBE_CTL_CONFIG: {{kubectl-config}},
+                 QUAY_APP_USERNAME: {{quay-app-username}},
+                 QUAY_APP_PASSWORD: {{quay-app-password}},
+                 APOSTILLE_CONFI: {{apostille-prod-config}} }

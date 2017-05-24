@@ -2,7 +2,6 @@
 platform: linux
 inputs:
   - name: apostille-pull-request
-  - name: quay-policies
   - name: signer
   - name: server
 run:
@@ -11,6 +10,8 @@ run:
     - -c
     - |
       echo $KUBE_CTL_CONFIG | tr -d '\n' | base64 --decode > /kube_config && export KUBECONFIG=/kube_config
+      echo $APOSTILLE_CONFIG | tr -d '\n' | base64 --decode > /apostille-staging.yaml
+
 
       export SIGNER_GIT_SHA=`cat signer/docker_inspect.json | jq --raw-output '.[0].ContainerConfig.Labels.GIT_SHA'`
       export SIGNER_BUILD_UUID=`cat signer/docker_inspect.json | jq --raw-output '.[0].ContainerConfig.Labels.BUILD_UUID'`
@@ -29,7 +30,7 @@ run:
 
         helm registry login -u $QUAY_APP_USERNAME -p $QUAY_APP_PASSWORD quay.io
         helm registry push --namespace quay quay.io
-        helm upgrade  -f ../../../quay-policies/tools/cloudconfig/static/helm-values/apostille-staging.yaml \
+        helm upgrade  -f /apostille-staging.yaml \
                       --set apostille_image=quay.io/quay/apostille:${SERVER_GIT_SHA},signer_image=quay.io/quay/apostille-signer:${SIGNER_GIT_SHA} \
                       --install \
                       apostille-staging .

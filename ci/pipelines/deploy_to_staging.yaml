@@ -26,13 +26,6 @@ resources:
       branch: master
       private_key: {{quay-git-private-key}}
       disable_ci_skip: true
-  - name: quay-policies
-    type: git
-    source:
-      uri: git@github.com:coreos-inc/quay-policies.git
-      branch: master
-      private_key: {{quay-policies-git-private-key}}
-      disable_ci_skip: true
 
 jobs:
   - name: deploy-to-staging
@@ -45,8 +38,10 @@ jobs:
           trigger: true
       - get: apostille-pull-request
       - get: apostille-build-util
-      - get: quay-policies
       - task: deploy_to_staging
         image: apostille-build-util
         file: apostille-pull-request/ci/tasks/deploy_to_staging.yaml
-        params: {KUBE_CTL_CONFIG: {{kubectl-config}}, QUAY_APP_USERNAME: {{quay-app-username}}, QUAY_APP_PASSWORD: {{quay-app-password}}  }
+        params: {KUBE_CTL_CONFIG: {{kubectl-config}},
+                 QUAY_APP_USERNAME: {{quay-app-username}},
+                 QUAY_APP_PASSWORD: {{quay-app-password}},
+                 APOSTILLE_CONFIG: {{apostille-staging-config}} }
