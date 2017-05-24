@@ -10,7 +10,7 @@ run:
     - -c
     - |
       echo $KUBE_CTL_CONFIG | tr -d '\n' | base64 --decode > /kube_config && export KUBECONFIG=/kube_config
-
+      echo $APOSTILLE_CONFIG | tr -d '\n' | base64 --decode > /apostille-prod.yaml
 
       helm init --client-only
       export SEMVER=`cat gh-release/version | sed 's/v//g'`
@@ -27,7 +27,7 @@ run:
       helm registry login -u $QUAY_APP_USERNAME -p $QUAY_APP_PASSWORD quay.io
       helm registry push --namespace quay quay.io
 
-      helm upgrade  -f ../../../quay-policies/tools/cloudconfig/static/helm-values/apostille-prod.yaml \
+      helm upgrade  -f /apostille-prod.yaml \
                     --set apostille_image=quay.io/quay/apostille:${GIT_SHA},signer_image=quay.io/quay/apostille-signer:${GIT_SHA} \
                     --install \
                     apostille .
