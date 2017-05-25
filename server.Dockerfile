@@ -21,8 +21,8 @@ RUN set -ex \
         make \
         curl \
 	\
-	&& go get -tags 'mysql postgres file' github.com/mattes/migrate/cli \
-	&& mv /go/bin/cli /usr/bin/migrate \
+	&& go get github.com/wallester/migrate \
+	&& mv /go/bin/migrate /usr/bin/migrate \
 	&& mv /go/src/${APOSTILLE_SRC}/migrations /migrations \
 	&& mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH" \
 	&& cd /go/src/${APOSTILLE_SRC} \
