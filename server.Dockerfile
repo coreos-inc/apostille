@@ -21,7 +21,7 @@ RUN set -ex \
         make \
         curl \
 	\
-	&& go get github.com/wallester/migrate \
+	&& go get github.com/ecordell/migrate \
 	&& mv /go/bin/migrate /usr/bin/migrate \
 	&& mv /go/src/${APOSTILLE_SRC}/migrations /migrations \
 	&& mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH" \
