@@ -3,8 +3,7 @@ MAINTAINER Evan Cordell "cordell.evan@gmail.com"
 
 RUN apk add --update curl git gcc libc-dev ca-certificates && rm -rf /var/cache/apk/*
 
-## Pin to the specific v3.0.0 version
-RUN go get -tags 'mysql postgres file' github.com/mattes/migrate/cli && mv /go/bin/cli /go/bin/migrate 
+RUN go get github.com/ecordell/migrate 
 
 ENV APOSTILLE_SRC github.com/coreos-inc/apostille
 
