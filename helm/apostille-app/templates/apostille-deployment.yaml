@@ -56,7 +56,7 @@ spec:
               "name": "migrate-apostille-signer",
               "image": "{{.Values.signer_image}}",
               "imagePullPolicy": "IfNotPresent",
-              "command": ["/bin/sh", "-c", "/go/src/github.com/docker/notary/migrations/migrate.sh" ],
+              "command": ["/bin/sh", "-c", "/migrate.sh" ],
               "env": [
                 {
                   "name": "DB_URL",
