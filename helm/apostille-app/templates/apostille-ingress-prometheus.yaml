@@ -1,7 +1,7 @@
 kind: Ingress
 apiVersion: extensions/v1beta1
 metadata:
-  name: {{.Values.service}}
+  name: {{.Values.service}}-ingress
   namespace: {{.Values.apostille_namespace}}
   annotations:
     kubernetes.io/tls-acme: "true"
