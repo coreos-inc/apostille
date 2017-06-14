@@ -1,0 +1,15 @@
+{
+  "server": {
+    "grpc_addr": ":7899",
+    "tls_cert_file": "/go/src/github.com/docker/notary/fixtures/notary-signer.crt",
+    "tls_key_file": "/go/src/github.com/docker/notary/fixtures/notary-signer.key",
+    "client_ca_file": "/go/src/github.com/docker/notary/fixtures/notary-server.crt"
+  },
+  "logging": {
+    "level": "debug"
+  },
+  "storage": {
+    "backend": "postgres",
+    "db_url": "postgres://signer@postgresql:5432/notarysigner?sslmode=disable"
+  }
+}

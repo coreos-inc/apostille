@@ -56,7 +56,9 @@ services:
       GOPATH: /go/src
       MIGRATIONS_PATH: /go/src/github.com/docker/notary/migrations/signer/postgresql
       DB_URL: postgres://signer@postgresql:5432/notarysigner?sslmode=disable
-    command: -c "/go/src/github.com/docker/notary/migrations/migrate.sh && notary-signer -config=/go/src/github.com/docker/notary/fixtures/signer-config.postgres.json"
+    command: -c "/go/src/github.com/docker/notary/migrations/migrate.sh && notary-signer -config=/signer-config.postgres.json"
+    volumes:
+      - ./fixtures/signer-config.postgres.json:/signer-config.postgres.json
     depends_on:
       - postgresql
 volumes:
