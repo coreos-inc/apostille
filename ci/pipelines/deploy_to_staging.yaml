@@ -19,6 +19,13 @@ resources:
       repository: quay.io/quay/apostille-build-util
       username: {{quay-robot-username}}
       password: {{quay-robot-password}}
+  - name: quay-policies-encrypted
+    type: git
+    source:
+      uri: git@github.com:coreos-inc/quay-policies-encrypted.git
+      branch: master
+      private_key: {{quay-policies-git-private-key}}
+      disable_ci_skip: true
   - name: apostille-pull-request
     type: git
     source:
@@ -38,10 +45,11 @@ jobs:
           trigger: true
       - get: apostille-pull-request
       - get: apostille-build-util
+      - get: quay-policies-encrypted
       - task: deploy_to_staging
         image: apostille-build-util
         file: apostille-pull-request/ci/tasks/deploy_to_staging.yaml
         params: {KUBE_CTL_CONFIG: {{kubectl-config}},
                  QUAY_APP_USERNAME: {{quay-app-username}},
                  QUAY_APP_PASSWORD: {{quay-app-password}},
-                 APOSTILLE_CONFIG: {{apostille-staging-config}} }
+                 QUAY_POLICIES_DECRYPT_KEY: {{concourse-quay-policies-key}} }
