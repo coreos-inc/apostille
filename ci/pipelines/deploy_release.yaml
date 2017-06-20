@@ -12,6 +12,13 @@ resources:
       branch: master
       private_key: {{quay-git-private-key}}
       disable_ci_skip: true
+  - name: quay-policies-encrypted
+    type: git
+    source:
+      uri: git@github.com:coreos-inc/quay-policies-encrypted.git
+      branch: master
+      private_key: {{quay-git-private-key}}
+      disable_ci_skip: true
   - name: apostille-build-util
     type: docker-image
     source:
@@ -27,10 +34,11 @@ jobs:
         trigger: true
       - get: apostille-code
       - get: apostille-build-util
+      - get: quay-policies-encrypted
       - task: deploy_release
         image: apostille-build-util
         file: apostille-code/ci/tasks/deploy_release.yaml
         params: {KUBE_CTL_CONFIG: {{kubectl-config}},
                  QUAY_APP_USERNAME: {{quay-app-username}},
                  QUAY_APP_PASSWORD: {{quay-app-password}},
-                 APOSTILLE_CONFI: {{apostille-prod-config}} }
+                 QUAY_POLICIES_DECRYPT_KEY: {{concourse-quay-policies-key}} }

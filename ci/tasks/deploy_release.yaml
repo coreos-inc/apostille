@@ -2,7 +2,7 @@
 platform: linux
 inputs:
   - name: gh-release
-  - name: quay-policies
+  - name: quay-policies-encrypted
   - name: apostille-code
 run:
   path: /bin/sh
@@ -11,6 +11,12 @@ run:
     - |
       echo $KUBE_CTL_CONFIG | tr -d '\n' | base64 --decode > /kube_config && export KUBECONFIG=/kube_config
       echo $APOSTILLE_CONFIG | tr -d '\n' | base64 --decode > /apostille-prod.yaml
+      echo $QUAY_POLICIES_DECRYPT_KEY > /concourse-quay-policies.key
+
+      gpg import /concourse-quay-policies.key
+      cd quay-polices-encrypted
+      git-crypt unlock
+      cd ..
 
       helm init --client-only
       export SEMVER=`cat gh-release/version | sed 's/v//g'`
@@ -27,7 +33,7 @@ run:
       helm registry login -u $QUAY_APP_USERNAME -p $QUAY_APP_PASSWORD quay.io
       helm registry push --namespace quay quay.io
 
-      helm upgrade  -f /apostille-prod.yaml \
+      helm upgrade  -f ../../../quay-policies-encrypted/tools/cloudconfig/secrets/helm-values/apostille-prod.yaml \
                     --set apostille_image=quay.io/quay/apostille:${GIT_SHA},signer_image=quay.io/quay/apostille-signer:${GIT_SHA} \
                     --install \
                     apostille .

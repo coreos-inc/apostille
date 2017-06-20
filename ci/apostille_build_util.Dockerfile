@@ -12,7 +12,8 @@ RUN apt-get update && apt-get -y upgrade && apt-get -y --fix-missing install bas
                                                                              gzip           \
                                                                              uuid-runtime   \
                                                                              make           \
-                                                                             jq
+                                                                             jq             \
+                                                                             git-crypt
 
 RUN pip install --upgrade awscli
 
