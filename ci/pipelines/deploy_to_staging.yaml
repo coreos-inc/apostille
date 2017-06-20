@@ -24,7 +24,7 @@ resources:
     source:
       uri: git@github.com:coreos-inc/quay-policies-encrypted.git
       branch: master
-      private_key: {{quay-git-private-key}}
+      private_key: {{quay-policies-git-private-key}}
       disable_ci_skip: true
   - name: apostille-pull-request
     type: git
