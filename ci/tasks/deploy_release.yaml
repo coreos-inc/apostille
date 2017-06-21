@@ -5,12 +5,11 @@ inputs:
   - name: quay-policies-encrypted
   - name: apostille-code
 run:
-  path: /bin/sh
+  path: /bin/bash
   args:
     - -c
     - |
       echo $KUBE_CTL_CONFIG | tr -d '\n' | base64 --decode > /kube_config && export KUBECONFIG=/kube_config
-      echo $APOSTILLE_CONFIG | tr -d '\n' | base64 --decode > /apostille-prod.yaml
       echo $QUAY_POLICIES_DECRYPT_KEY > /concourse-quay-policies.key
 
       gpg import /concourse-quay-policies.key
