@@ -13,7 +13,7 @@ run:
       echo $QUAY_POLICIES_DECRYPT_KEY > /concourse-quay-policies.key
 
       gpg import /concourse-quay-policies.key
-      cd quay-polices-encrypted
+      cd quay-policies-encrypted
       git-crypt unlock
       cd ..
 
