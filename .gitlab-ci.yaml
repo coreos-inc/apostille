@@ -1,0 +1,27 @@
+unit-test:
+  script:
+    - make test
+  stage: test
+  services:
+    - docker:dind
+  allow_failure: false
+
+stages:
+ - test
+variables:
+  FAILFASTCI_NAMESPACE: quay
+
+#container-build:
+# image: docker:git
+# script:
+# - docker build -t quay.io/quay/quay-ci:${CI_COMMIT_REF_SLUG} -f quay.dockerfile .
+# - docker push quay.io/quay/quay-ci:${CI_COMMIT_REF_SLUG}
+# services:
+# - docker:dind
+# stage: docker_build
+# tags:
+# - docker
+# variables:
+#   DOCKER_DRIVER: aufs
+
+
