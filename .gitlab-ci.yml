@@ -1,4 +1,5 @@
 unit-test:
+  image: docker:latest
   script:
     - make test
   stage: test
