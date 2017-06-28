@@ -13,6 +13,7 @@ mysql-test:
   stage: test
   image: docker:dind
   before_script:
+    - export DOCKER_HOST="tcp://localhost:2375"
     - dockerd-entrypoint.sh &
     - apk update
     - apk add bash py-pip
@@ -33,6 +34,7 @@ postgres-test:
   stage: test
   image: docker:dind
   before_script:
+    - export DOCKER_HOST="tcp://localhost:2375"
     - dockerd-entrypoint.sh &
     - apk update
     - apk add bash py-pip
