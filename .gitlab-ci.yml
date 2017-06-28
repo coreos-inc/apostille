@@ -3,7 +3,7 @@ unit-test:
   image: golang:1.8
   before_script:
     - mkdir -p /go/src/github.com/coreos-inc/apostille
-    - cp -a /quay/coreos-inc__apostille/* /go/src/github.com/coreos-inc/apostille
+    - cp -a $CI_PROJECT_DIR/* /go/src/github.com/coreos-inc/apostille
     - cd /go/src/github.com/coreos-inc/apostille
   script:
     - make test
@@ -13,41 +13,42 @@ mysql-test:
   stage: test
   image: docker:dind
   before_script:
+    - dockerd-entrypoint.sh &
     - apk update
     - apk add bash py-pip
     - pip install docker-compose
     - mkdir -p /go/src/github.com/coreos-inc/apostille
-    - cp -a /quay/coreos-inc__apostille/* /go/src/github.com/coreos-inc/apostille
+    - cp -a $CI_PROJECT_DIR/* /go/src/github.com/coreos-inc/apostille
     - cd /go/src/github.com/coreos-inc/apostille
     - chmod 0777 ./aposql/mysql-initdb.d/*
   script:
     - integration/integration.sh mysql
+  variables:
+    DOCKER_HOST: tcp://localhost:2375
   tags:
     - kubernetes
-  variables:
-    DOCKER_HOST: tcp://docker-host.gitlab-runner.svc.cluster.local:2375
   allow_failure: false
 
 postgres-test:
   stage: test
-  image: docker:latest
+  image: docker:dind
   before_script:
+    - dockerd-entrypoint.sh &
     - apk update
     - apk add bash py-pip
     - pip install docker-compose
     - mkdir -p /go/src/github.com/coreos-inc/apostille
-    - cp -a /quay/coreos-inc__apostille/* /go/src/github.com/coreos-inc/apostille
+    - cp -a $CI_PROJECT_DIR/* /go/src/github.com/coreos-inc/apostille
     - cd /go/src/github.com/coreos-inc/apostille
   script:
-    - cd /quay/coreos-inc__apostille
     - integration/integration.sh postgresql
   services:
     - docker:dind
   tags:
     - kubernetes
   variables:
-    DOCKER_DRIVER: overlay
-    DOCKER_HOST: tcp://docker-host.gitlab-runner.svc.cluster.local:2375
+    # DOCKER_DRIVER: overlay
+    DOCKER_HOST: tcp://localhost:2375
   allow_failure: false
 
 
