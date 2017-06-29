@@ -26,3 +26,12 @@ make test         # unit tests
 make integration
 make test-all
 ```
+
+# CI/CD
+
+1. Test with `bin/local-ci.sh`
+1. Install yaml, helm, cri plugin
+1. `kubectl config use-context <cluster>`
+1. Initialize and Login to helm as a user with access to apostille-app
+1. `bin/deploy-to-staging.sh /path/to/quay-policies-encrypted`
+1. `bin/deploy-to-prod.sh /path/to/quay-policies-encrypted`
