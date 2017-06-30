@@ -22,29 +22,26 @@ esac
 composeFile="test.${db}.yml"
 
 function cleanup {
-	docker-compose -f ${composeFile} kill
-	docker-compose -f ${composeFile} down -v --remove-orphans
+	docker-compose -p "apostille_integration_${db}" -f ${composeFile} kill
+	docker-compose -p "apostille_integration_${db}" -f ${composeFile} down -v --remove-orphans
 }
 
 function cleanupAndExit {
+	exitCode=$?
     cleanup
-    exit 1
+    exit $exitCode
 }
 
-trap cleanupAndExit SIGINT SIGTERM
+trap cleanupAndExit SIGINT SIGTERM EXIT
 
 cleanup
 
-docker-compose -f ${composeFile} build
-docker-compose -f ${composeFile} up server &
-docker-compose -f ${composeFile} run client &
+docker-compose -p "apostille_integration_${db}" -f ${composeFile} build
+docker-compose -p "apostille_integration_${db}" -f ${composeFile} up server &
+docker-compose -p "apostille_integration_${db}" -f ${composeFile} run client &
 
 # Wait on client to finish running
 wait $!
 
 # Capture exit code of client
-exitCode=$?
-
-cleanup
-
-exit $exitCode
+cleanupAndExit

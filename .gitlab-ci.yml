@@ -1,28 +1,76 @@
 unit-test:
-  image: docker:latest
+  stage: test
+  image: golang:1.8
+  before_script:
+    - mkdir -p /go/src/github.com/coreos-inc/apostille
+    - cp -a $CI_PROJECT_DIR/* /go/src/github.com/coreos-inc/apostille
+    - cd /go/src/github.com/coreos-inc/apostille
   script:
     - make test
+  allow_failure: false
+
+mysql-test:
   stage: test
+  image: docker:git
+  before_script:
+    - apk update
+    - apk add bash py-pip
+    - pip install docker-compose
+    - mkdir -p /go/src/github.com/coreos-inc/apostille
+    - cp -a $CI_PROJECT_DIR/* /go/src/github.com/coreos-inc/apostille
+    - cd /go/src/github.com/coreos-inc/apostille
+  script:
+    - bin/integration.sh mysql
+  variables:
+    DOCKER_DRIVER: overlay
+    DOCKER_HOST: tcp://docker-host.gitlab-runner.svc.cluster.local:2375
+  tags:
+    - kubernetes
+  allow_failure: false
+
+postgres-test:
+  stage: test
+  image: docker:git
+  before_script:
+    - apk update
+    - apk add bash py-pip
+    - pip install docker-compose
+    - mkdir -p /go/src/github.com/coreos-inc/apostille
+    - cp -a $CI_PROJECT_DIR/* /go/src/github.com/coreos-inc/apostille
+    - cd /go/src/github.com/coreos-inc/apostille
+  script:
+    - bin/integration.sh postgresql
   services:
     - docker:dind
+  tags:
+    - kubernetes
+  variables:
+    DOCKER_DRIVER: overlay
+    DOCKER_HOST: tcp://docker-host.gitlab-runner.svc.cluster.local:2375
   allow_failure: false
+
+
+#container-build:
+#  only:
+#  - master
+#  before_script:
+#  - docker login -u $DOCKER_USER -p $DOCKER_PASS quay.io
+#  image: docker:git
+#  script:
+#   - docker build -t quay.io/quay/apostille:${CI_COMMIT_REF_SLUG} -f server.Dockerfile .
+#   - docker build -t quay.io/quay/apostille-signer:${CI_COMMIT_REF_SLUG} -f signer.Dockerfile .
+#   - docker push quay.io/quay/apostille:${CI_COMMIT_REF_SLUG}
+#   - docker push quay.io/quay/apostille-signer:${CI_COMMIT_REF_SLUG}
+#  stage: docker_build
+#  tags:
+#  - kubernetes
+#  variables:
+#    DOCKER_DRIVER: overlay
+#    DOCKER_HOST: tcp://docker-host.gitlab-runner.svc.cluster.local:2375
 
 stages:
  - test
+ - docker_build
+
 variables:
   FAILFASTCI_NAMESPACE: quay
-
-#container-build:
-# image: docker:git
-# script:
-# - docker build -t quay.io/quay/quay-ci:${CI_COMMIT_REF_SLUG} -f quay.dockerfile .
-# - docker push quay.io/quay/quay-ci:${CI_COMMIT_REF_SLUG}
-# services:
-# - docker:dind
-# stage: docker_build
-# tags:
-# - docker
-# variables:
-#   DOCKER_DRIVER: aufs
-
-
