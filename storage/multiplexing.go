@@ -46,9 +46,9 @@ type MultiplexingStore struct {
 func NewMultiplexingStore(store, rootStore notaryStorage.MetaStore, cs signed.CryptoService, defaultChannel notaryStorage.Channel, alternateRootChannel notaryStorage.Channel, rootChannel notaryStorage.Channel, rootGUN data.GUN, stashedTargetsRole data.RoleName) *MultiplexingStore {
 	return &MultiplexingStore{
 		MetaStore:                 store,
-		SignerChannelMetaStore:    &ReadOnlyStore{MetaStore: NewChannelMetastore(store, defaultChannel)},
-		AlternateChannelMetaStore: &ReadOnlyStore{MetaStore: NewChannelMetastore(store, alternateRootChannel)},
-		RootMetaStore:             &ReadOnlyStore{MetaStore: NewChannelMetastore(rootStore, rootChannel)},
+		SignerChannelMetaStore:    NewChannelMetastore(store, defaultChannel),
+		AlternateChannelMetaStore: NewChannelMetastore(store, alternateRootChannel),
+		RootMetaStore:             NewChannelMetastore(rootStore, rootChannel),
 		cryptoService:             cs,
 		stashedTargetsRole:        stashedTargetsRole,
 		defaultChannel:            defaultChannel,
