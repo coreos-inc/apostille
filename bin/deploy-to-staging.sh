@@ -3,7 +3,7 @@
 set -e
 
 export GIT_SHA=$(git rev-parse --short --verify HEAD)
-export SEMVER=`git tag | sort -r | head -1 | sed 's/v//g'`+${GIT_SHA}
+export SEMVER=`git tag | sort -r | head -1 | sed 's/v//g'`-staging+${GIT_SHA}
 
 
 cd helm/apostille-app
