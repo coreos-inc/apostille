@@ -10,7 +10,7 @@ spec:
   tls:
     - hosts:
         - {{.Values.service_subdomain}}.quay.io
-      secretName: {{.Values.service}}-apostille-tls
+      secretName: {{.Values.service}}-tls
   rules:
     - host: {{.Values.service_subdomain}}.quay.io
       http:
