@@ -28,7 +28,7 @@ services:
     networks:
       - mdb
     volumes:
-      - ./aposql/postgresql-initdb.d:/docker-entrypoint-initdb.d
+      - /go/src/github.com/coreos-inc/apostille/aposql/postgresql-initdb.d:/docker-entrypoint-initdb.d
       - apostille_data:/var/lib/postgresql
     ports:
       - 5432:5432

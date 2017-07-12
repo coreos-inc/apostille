@@ -23,7 +23,7 @@ services:
       - mdb
       - sig
     volumes:
-      - ./aposql/mysql-initdb.d:/docker-entrypoint-initdb.d
+      - /go/src/github.com/coreos-inc/apostille/aposql/mysql-initdb.d:/docker-entrypoint-initdb.d
     image: mariadb:10.1.10
     environment:
       - TERM=dumb
