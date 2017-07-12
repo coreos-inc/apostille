@@ -45,12 +45,8 @@ data:
       },
       "repositories": {
         "gun_prefixes": [
-          {{ $host := .Values.host }}
-          {{- range .Values.repo_prefixes }}
-          "{{ $host }}/{{ . }}/",
-          {{- end }}
-          "{{ .Values.host }}/quay/"
-          ]
+          "{{ .Values.host }}"
+        ]
       }
     }
   db.url: {{.Values.db_url}}/apostille
