@@ -12,6 +12,7 @@ ENV NOTARY_SIGNER_TIMESTAMP_1="testpassword"
 RUN chmod 0600 /go/src/github.com/docker/notary/fixtures/database/*
 
 ADD ./migrations/migrate-signer.sh /migrate.sh
+ADD ./fixtures/signer-config.postgres.json /signer-config.postgres.json
 
 ENTRYPOINT [ "/bin/sh" ]
 CMD [ "notary-signer", "-config=/go/src/github.com/docker/notary/fixtures/signer-config.json" ]

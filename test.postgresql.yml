@@ -29,10 +29,11 @@ services:
       dockerfile: postgres.Dockerfile
     networks:
       - mdb
+      - sig
     volumes:
       - apostille_data:/var/lib/postgresql
     ports:
-      - 5432:5432
+      - "5432:5432"
   client:
     build:
       context: .
@@ -56,8 +57,6 @@ services:
       MIGRATIONS_PATH: /go/src/github.com/docker/notary/migrations/signer/postgresql
       DB_URL: postgres://signer@postgresql:5432/notarysigner?sslmode=disable
     command: -c "/migrate.sh && notary-signer -config=/signer-config.postgres.json"
-    volumes:
-      - ./fixtures/signer-config.postgres.json:/signer-config.postgres.json
     depends_on:
       - postgresql
 volumes:
