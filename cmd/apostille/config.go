@@ -53,8 +53,8 @@ func getRequiredGunPrefixes(configuration *viper.Viper) ([]string, error) {
 // getAddrAndTLSConfig gets the address for the HTTP server, and parses the optional TLS
 // configuration for the server - if no TLS configuration is specified,
 // TLS is not enabled.
-func getAddrAndTLSConfig(configuration *viper.Viper) (string, *tls.Config, error) {
-	httpAddr := configuration.GetString("server.http_addr")
+func getAddrAndTLSConfig(configuration *viper.Viper, httpAddrKey string) (string, *tls.Config, error) {
+	httpAddr := configuration.GetString(httpAddrKey)
 	if httpAddr == "" {
 		return "", nil, fmt.Errorf("http listen address required for server")
 	}
@@ -437,52 +437,68 @@ func getQuayRoot(configuration *viper.Viper, cs signed.CryptoService, store nota
 }
 
 // parseServerConfig parses the config file into a Config struct
-func parseServerConfig(configFilePath string) (context.Context, server.Config, error) {
+func parseServerConfig(configFilePath string) (context.Context, context.Context, server.Config, server.Config, error) {
 	config := viper.New()
 	utils.SetupViper(config, envPrefix)
 
 	// parse viper config
 	if err := utils.ParseViper(config, configFilePath); err != nil {
-		return nil, server.Config{}, err
+		return nil, nil, server.Config{}, server.Config{}, err
 	}
 
 	ctx := context.Background()
+	adminCtx := context.Background()
 
-	// default is error level
+	// default error level
 	lvl, err := utils.ParseLogLevel(config, logrus.ErrorLevel)
 	if err != nil {
-		return nil, server.Config{}, err
+		return nil, nil, server.Config{}, server.Config{}, err
 	}
 	logrus.SetLevel(lvl)
 
 	prefixes, err := getRequiredGunPrefixes(config)
 	if err != nil {
-		return nil, server.Config{}, err
+		return nil, nil, server.Config{}, server.Config{}, err
 	}
 
 	trust, keyAlgo, err := getTrustService(config, getNotarySigner, health.RegisterPeriodicFunc)
 	if err != nil {
-		return nil, server.Config{}, err
+		return nil, nil, server.Config{}, server.Config{}, err
 	}
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, keyAlgo)
 
+	rootBackend := config.GetString("root_storage.backend")
+	logrus.Infof("Using %s admin backend", rootBackend)
+
+	adminStore, err := getBaseStore(config, health.RegisterPeriodicFunc, rootBackend, "root_storage", "admin")
+	if err != nil {
+		return nil, nil, server.Config{}, server.Config{}, err
+	}
+	adminMetaStore := storage.NewChannelMetastore(adminStore, storage.Root)
+	adminCtx = context.WithValue(adminCtx, notary.CtxKeyMetaStore, adminMetaStore)
+
 	store, err := getStore(config, trust, health.RegisterPeriodicFunc)
 	if err != nil {
-		return nil, server.Config{}, err
+		return nil, nil, server.Config{}, server.Config{}, err
 	}
 	ctx = context.WithValue(ctx, notary.CtxKeyMetaStore, store)
 
 	currentCache, consistentCache, err := getCacheConfig(config)
 	if err != nil {
-		return nil, server.Config{}, err
+		return nil, nil, server.Config{}, server.Config{}, err
 	}
 
-	httpAddr, tlsConfig, err := getAddrAndTLSConfig(config)
+	httpAddr, tlsConfig, err := getAddrAndTLSConfig(config, "server.http_addr")
 	if err != nil {
-		return nil, server.Config{}, err
+		return nil, nil, server.Config{}, server.Config{}, err
 	}
 
-	return ctx, server.Config{
+	adminHTTPAddr, _, err := getAddrAndTLSConfig(config, "server.admin_http_addr")
+	if err != nil {
+		return nil, nil, server.Config{}, server.Config{}, err
+	}
+
+	serverConfig := server.Config{
 		Addr:                         httpAddr,
 		TLSConfig:                    tlsConfig,
 		Trust:                        trust,
@@ -491,5 +507,19 @@ func parseServerConfig(configFilePath string) (context.Context, server.Config, e
 		RepoPrefixes:                 prefixes,
 		CurrentCacheControlConfig:    currentCache,
 		ConsistentCacheControlConfig: consistentCache,
-	}, nil
+		Admin: false,
+	}
+
+	adminServerConfig := server.Config{
+		Addr:                         adminHTTPAddr,
+		TLSConfig:                    tlsConfig,
+		Trust:                        trust,
+		AuthMethod:                   "admin",
+		AuthOpts:                     nil,
+		RepoPrefixes:                 nil,
+		CurrentCacheControlConfig:    currentCache,
+		ConsistentCacheControlConfig: consistentCache,
+		Admin: true,
+	}
+	return ctx, adminCtx, serverConfig, adminServerConfig, nil
 }

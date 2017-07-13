@@ -28,7 +28,6 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"github.com/surullabs/lint"
-	"github.com/surullabs/lint/dupl"
 	"github.com/surullabs/lint/gofmt"
 	"github.com/surullabs/lint/golint"
 	"github.com/surullabs/lint/gosimple"
@@ -45,12 +44,11 @@ const (
 
 func TestLint(t *testing.T) {
 	custom := lint.Group{
-		gofmt.Check{},             // Enforce gofmt usage
-		govet.Check{},             // Use govet without -shadow
-		golint.Check{},            // Enforce Google Go style guide
-		dupl.Check{Threshold: 25}, // Identify duplicates
-		gosimple.Check{},          // Simplification suggestions
-		gostaticcheck.Check{},     // Verify function parameters
+		gofmt.Check{},         // Enforce gofmt usage
+		govet.Check{},         // Use govet without -shadow
+		golint.Check{},        // Enforce Google Go style guide
+		gosimple.Check{},      // Simplification suggestions
+		gostaticcheck.Check{}, // Verify function parameters
 	}
 	if err := custom.Check("../..."); err != nil {
 		t.Fatal("lint failures: %v", err)
@@ -147,7 +145,17 @@ func TestGetAddrAndTLSConfigInvalidTLS(t *testing.T) {
 		}}`,
 	}
 	for _, configJSON := range invalids {
-		_, _, err := getAddrAndTLSConfig(configure(configJSON))
+		_, _, err := getAddrAndTLSConfig(configure(configJSON), "server.http_addr")
+		require.Error(t, err)
+	}
+	invalidAdmins := []string{
+		`{"server": {
+				"http_addr": ":1234",
+				"tls_key_file": "nope"
+		}}`,
+	}
+	for _, configJSON := range invalidAdmins {
+		_, _, err := getAddrAndTLSConfig(configure(configJSON), "server.admin_http_addr")
 		require.Error(t, err)
 	}
 }
@@ -158,7 +166,16 @@ func TestGetAddrAndTLSConfigNoHTTPAddr(t *testing.T) {
 			"tls_cert_file": "%s",
 			"tls_key_file": "%s"
 		}
-	}`, Cert, Key)))
+	}`, Cert, Key)), "server.http_addr")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "http listen address required for server")
+
+	_, _, err = getAddrAndTLSConfig(configure(fmt.Sprintf(`{
+		"server": {
+			"tls_cert_file": "%s",
+			"tls_key_file": "%s"
+		}
+	}`, Cert, Key)), "server.admin_http_addr")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "http listen address required for server")
 }
@@ -170,17 +187,33 @@ func TestGetAddrAndTLSConfigSuccessWithTLS(t *testing.T) {
 			"tls_cert_file": "%s",
 			"tls_key_file": "%s"
 		}
-	}`, Cert, Key)))
+	}`, Cert, Key)), "server.http_addr")
 	require.NoError(t, err)
 	require.Equal(t, ":2345", httpAddr)
+	require.NotNil(t, tlsConf)
+
+	adminHTTPAddr, tlsConf, err := getAddrAndTLSConfig(configure(fmt.Sprintf(`{
+		"server": {
+			"admin_http_addr": ":2345",
+			"tls_cert_file": "%s",
+			"tls_key_file": "%s"
+		}
+	}`, Cert, Key)), "server.admin_http_addr")
+	require.NoError(t, err)
+	require.Equal(t, ":2345", adminHTTPAddr)
 	require.NotNil(t, tlsConf)
 }
 
 func TestGetAddrAndTLSConfigSuccessWithoutTLS(t *testing.T) {
 	httpAddr, tlsConf, err := getAddrAndTLSConfig(configure(
-		`{"server": {"http_addr": ":2345"}}`))
+		`{"server": {"http_addr": ":2345"}}`), "server.http_addr")
 	require.NoError(t, err)
 	require.Equal(t, ":2345", httpAddr)
+	require.Nil(t, tlsConf)
+	adminHTTPAddr, tlsConf, err := getAddrAndTLSConfig(configure(
+		`{"server": {"admin_http_addr": ":2345"}}`), "server.admin_http_addr")
+	require.NoError(t, err)
+	require.Equal(t, ":2345", adminHTTPAddr)
 	require.Nil(t, tlsConf)
 }
 
@@ -192,9 +225,20 @@ func TestGetAddrAndTLSConfigWithClientTLS(t *testing.T) {
 			"tls_key_file": "%s",
 			"client_ca_file": "%s"
 		}
-	}`, Cert, Key, Root)))
+	}`, Cert, Key, Root)), "server.http_addr")
 	require.NoError(t, err)
 	require.Equal(t, ":2345", httpAddr)
+	require.NotNil(t, tlsConf.ClientCAs)
+	adminHTTPAddr, tlsConf, err := getAddrAndTLSConfig(configure(fmt.Sprintf(`{
+		"server": {
+			"admin_http_addr": ":2345",
+			"tls_cert_file": "%s",
+			"tls_key_file": "%s",
+			"client_ca_file": "%s"
+		}
+	}`, Cert, Key, Root)), "server.admin_http_addr")
+	require.NoError(t, err)
+	require.Equal(t, ":2345", adminHTTPAddr)
 	require.NotNil(t, tlsConf.ClientCAs)
 }
 

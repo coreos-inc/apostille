@@ -38,7 +38,7 @@ RUN set -ex \
 	&& rm -rf /go \
 	&& rm -rf /usr/local/go*
 
-EXPOSE 4443
+EXPOSE 4443 4442
 
 ENTRYPOINT [ "apostille" ]
 CMD [ "-config=/fixtures/config.prod.json" ]

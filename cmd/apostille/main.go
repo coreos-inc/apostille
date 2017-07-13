@@ -24,10 +24,17 @@ func main() {
 
 	flag.Parse()
 
-	ctx, serverConfig, err := parseServerConfig(flagStorage.configFile)
+	ctx, adminCtx, serverConfig, adminServerConfig, err := parseServerConfig(flagStorage.configFile)
 	if err != nil {
 		logrus.Fatal(err.Error())
 	}
+
+	go func() {
+		err = server.Run(adminCtx, adminServerConfig)
+		if err != nil {
+			logrus.Fatal(err.Error())
+		}
+	}()
 
 	err = server.Run(ctx, serverConfig)
 

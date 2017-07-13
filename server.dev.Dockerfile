@@ -13,7 +13,7 @@ COPY . /go/src/${APOSTILLE_SRC}
 WORKDIR /go/src/${APOSTILLE_SRC}
 
 ENV SERVICE_NAME=apostille
-EXPOSE 4443
+EXPOSE 4443 4442
 
 # Install apostille
 RUN go install \
