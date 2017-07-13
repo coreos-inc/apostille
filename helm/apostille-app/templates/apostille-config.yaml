@@ -45,7 +45,7 @@ data:
       },
       "repositories": {
         "gun_prefixes": [
-          "{{ .Values.host }}"
+          "{{ .Values.host }}/"
         ]
       }
     }

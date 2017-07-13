@@ -18,7 +18,7 @@ EXPOSE 4443
 # Install apostille
 RUN go install \
     -ldflags "-w" \
-    ${APOSTILLE_SRC}/cmd/apostille && apk del git gcc libc-dev
+    ${APOSTILLE_SRC}/cmd/apostille
 
 #ADD fixtures/root-ca.crt /usr/local/share/ca-certificates/root-ca.crt
 RUN update-ca-certificates

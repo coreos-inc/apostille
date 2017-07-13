@@ -22,9 +22,9 @@ services:
     networks:
       - mdb
       - sig
-    volumes:
-      - ./aposql/mysql-initdb.d:/docker-entrypoint-initdb.d
-    image: mariadb:10.1.10
+    build:
+      context: .
+      dockerfile: mysql.Dockerfile
     environment:
       - TERM=dumb
       - MYSQL_ALLOW_EMPTY_PASSWORD="true"
@@ -36,8 +36,6 @@ services:
       context: .
       dockerfile: client.Dockerfile
     command: python testclient.py
-    volumes:
-      - ./test_output:/test_output
     networks:
       - mdb
       - srv
