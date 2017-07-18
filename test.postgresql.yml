@@ -3,7 +3,7 @@ services:
   server:
     build:
       context: .
-      dockerfile: server.Dockerfile
+      dockerfile: server.dev.Dockerfile
     networks:
       mdb:
       sig:
@@ -14,7 +14,7 @@ services:
       - "8080"
       - "4443:4443"
     entrypoint: /usr/bin/env sh
-    command: -c "/migrations/migrate.sh && apostille -config=fixtures/config.postgres.json"
+    command: -c "migrations/migrate.sh && apostille -config=fixtures/config.postgres.json"
     environment:
       QUAY_ROOT: quay.dev/*
       MIGRATIONS_PATH: migrations/postgresql

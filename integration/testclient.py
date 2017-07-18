@@ -304,7 +304,7 @@ def run():
         password = getpass("password to server for user {0}: ".format(username))
         username_passwd = (username, password)
 
-    wait_for_server(server, 120)
+    wait_for_server(server, 240)
 
     Tester(repo_name, Client(server, username_passwd)).run()
 

@@ -15,7 +15,7 @@ func main() {
 
 	decryptedPrivKey, _, err := jose.Decode(privateKey, "abc...")
 	if err != nil {
-		fmt.Errorf("%v", err)
+		panic(fmt.Errorf("%v", err))
 	}
 
 	pubKey := data.NewPublicKey("ecdsa", []byte(publicKey))
@@ -23,12 +23,12 @@ func main() {
 	// Create a new PrivateKey with unencrypted bytes
 	privKey, err := data.NewPrivateKey(pubKey, []byte(decryptedPrivKey))
 	if err != nil {
-		fmt.Errorf("%v", err)
+		panic(fmt.Errorf("%v", err))
 	}
 
 	encoded, err := utils.KeyToPEM(privKey, "root", "quay.io/*")
 	if err != nil {
-		fmt.Errorf("%v", err)
+		panic(fmt.Errorf("%v", err))
 	}
 	fmt.Println(string(encoded))
 }

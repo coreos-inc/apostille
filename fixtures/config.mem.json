@@ -1,6 +1,7 @@
 {
 	"server": {
-		"http_addr": ":4443"
+		"http_addr": ":4443",
+		"admin_http_addr": ":4442"
 	},
 	"trust_service": {
 		"type": "remote",
