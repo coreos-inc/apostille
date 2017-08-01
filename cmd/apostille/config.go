@@ -441,29 +441,33 @@ func parseServerConfig(configFilePath string) (context.Context, context.Context,
 	config := viper.New()
 	utils.SetupViper(config, envPrefix)
 
+	configError := func(err error) (context.Context, context.Context, server.Config, server.Config, error) {
+		return nil, nil, server.Config{}, server.Config{}, err
+	}
+
 	// parse viper config
 	if err := utils.ParseViper(config, configFilePath); err != nil {
-		return nil, nil, server.Config{}, server.Config{}, err
+		return configError(err)
 	}
 
 	ctx := context.Background()
 	adminCtx := context.Background()
 
-	// default error level
+	// set default error level
 	lvl, err := utils.ParseLogLevel(config, logrus.ErrorLevel)
 	if err != nil {
-		return nil, nil, server.Config{}, server.Config{}, err
+		return configError(err)
 	}
 	logrus.SetLevel(lvl)
 
 	prefixes, err := getRequiredGunPrefixes(config)
 	if err != nil {
-		return nil, nil, server.Config{}, server.Config{}, err
+		return configError(err)
 	}
 
 	trust, keyAlgo, err := getTrustService(config, getNotarySigner, health.RegisterPeriodicFunc)
 	if err != nil {
-		return nil, nil, server.Config{}, server.Config{}, err
+		return configError(err)
 	}
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, keyAlgo)
 
@@ -472,30 +476,30 @@ func parseServerConfig(configFilePath string) (context.Context, context.Context,
 
 	adminStore, err := getBaseStore(config, health.RegisterPeriodicFunc, rootBackend, "root_storage", "admin")
 	if err != nil {
-		return nil, nil, server.Config{}, server.Config{}, err
+		return configError(err)
 	}
 	adminMetaStore := storage.NewChannelMetastore(adminStore, storage.Root)
 	adminCtx = context.WithValue(adminCtx, notary.CtxKeyMetaStore, adminMetaStore)
 
 	store, err := getStore(config, trust, health.RegisterPeriodicFunc)
 	if err != nil {
-		return nil, nil, server.Config{}, server.Config{}, err
+		return configError(err)
 	}
 	ctx = context.WithValue(ctx, notary.CtxKeyMetaStore, store)
 
 	currentCache, consistentCache, err := getCacheConfig(config)
 	if err != nil {
-		return nil, nil, server.Config{}, server.Config{}, err
+		return configError(err)
 	}
 
 	httpAddr, tlsConfig, err := getAddrAndTLSConfig(config, "server.http_addr")
 	if err != nil {
-		return nil, nil, server.Config{}, server.Config{}, err
+		return configError(err)
 	}
 
 	adminHTTPAddr, _, err := getAddrAndTLSConfig(config, "server.admin_http_addr")
 	if err != nil {
-		return nil, nil, server.Config{}, server.Config{}, err
+		return configError(err)
 	}
 
 	serverConfig := server.Config{

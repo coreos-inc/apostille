@@ -6,13 +6,13 @@ import (
 	registryToken "github.com/docker/distribution/registry/auth/token"
 )
 
-// testingAccessController implements the auth.AccessController interface.
+// constantAccessController implements the auth.AccessController interface.
 type ConstantAccessController struct {
 	TUFRoot string
 	Allow   bool
 }
 
-// NewConstantAccessController creates a testingAccessController, only for use in tests
+// NewConstantAccessController creates a constantAccessController, which always authenticates as a particular role
 func NewConstantAccessController(tufRoot string) *ConstantAccessController {
 	return &ConstantAccessController{
 		TUFRoot: tufRoot,
