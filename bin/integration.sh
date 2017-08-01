@@ -22,8 +22,7 @@ esac
 composeFile="test.${db}.yml"
 
 function cleanup {
-	docker-compose -p "apostille_integration_${db}" -f ${composeFile} logs ${db}
-	docker-compose -p "apostille_integration_${db}" -f ${composeFile} logs notary_signer
+	docker-compose -p "apostille_integration_${db}" -f ${composeFile} logs client
 	docker-compose -p "apostille_integration_${db}" -f ${composeFile} kill
 	docker-compose -p "apostille_integration_${db}" -f ${composeFile} down -v --remove-orphans
 }

@@ -6,15 +6,15 @@ import (
 	registryToken "github.com/docker/distribution/registry/auth/token"
 )
 
-// testingAccessController implements the auth.AccessController interface.
-type TestingAccessController struct {
+// constantAccessController implements the auth.AccessController interface.
+type ConstantAccessController struct {
 	TUFRoot string
 	Allow   bool
 }
 
-// NewTestingAccessController creates a testingAccessController, only for use in tests
-func NewTestingAccessController(tufRoot string) *TestingAccessController {
-	return &TestingAccessController{
+// NewConstantAccessController creates a constantAccessController, which always authenticates as a particular role
+func NewConstantAccessController(tufRoot string) *ConstantAccessController {
+	return &ConstantAccessController{
 		TUFRoot: tufRoot,
 		Allow:   true, // by default, all requests are authorized
 	}
@@ -22,10 +22,10 @@ func NewTestingAccessController(tufRoot string) *TestingAccessController {
 
 // Authorized handles checking whether the given request is authorized
 // for actions on resources described by the given access items.
-func (ac *TestingAccessController) Authorized(ctx context.Context, accessItems ...registryAuth.Access) (context.Context, error) {
+func (ac *ConstantAccessController) Authorized(ctx context.Context, accessItems ...registryAuth.Access) (context.Context, error) {
 	challenge := &authChallenge{
-		realm:     "testing",
-		service:   "testing",
+		realm:     ac.TUFRoot,
+		service:   ac.TUFRoot,
 		accessSet: newAccessSet(accessItems...),
 	}
 

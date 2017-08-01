@@ -133,7 +133,7 @@ func TestRepoPrefixDoesNotMatch(t *testing.T) {
 }
 
 func TestMetricsEndpoint(t *testing.T) {
-	ac := auth.NewTestingAccessController("testUser")
+	ac := auth.NewConstantAccessController("testUser")
 
 	// successful gets
 	handler := TrustMultiplexerHandler(ac, context.Background(), signed.NewEd25519(), nil, nil, nil)
@@ -152,7 +152,7 @@ func TestGetKeysEndpoint(t *testing.T) {
 	ctx := context.WithValue(context.Background(), notary.CtxKeyMetaStore, metaStore)
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, data.ED25519Key)
 
-	ac := auth.NewTestingAccessController("testUser")
+	ac := auth.NewConstantAccessController("testUser")
 
 	// successful gets
 	handler := TrustMultiplexerHandler(ac, ctx, signed.NewEd25519(), nil, nil, nil)
@@ -230,7 +230,7 @@ func TestGetRoleByHash(t *testing.T) {
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, data.ED25519Key)
 
 	ccc := utils.NewCacheControlConfig(10, false)
-	ac := auth.NewTestingAccessController("quay")
+	ac := auth.NewConstantAccessController("quay")
 	handler := TrustMultiplexerHandler(ac, ctx, signed.NewEd25519(), ccc, ccc, nil)
 	serv := httptest.NewServer(handler)
 	defer serv.Close()
@@ -300,7 +300,7 @@ func TestGetRoleByVersion(t *testing.T) {
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, data.ED25519Key)
 
 	ccc := utils.NewCacheControlConfig(10, false)
-	ac := auth.NewTestingAccessController("quay")
+	ac := auth.NewConstantAccessController("quay")
 	handler := TrustMultiplexerHandler(ac, ctx, signed.NewEd25519(), ccc, ccc, nil)
 	serv := httptest.NewServer(handler)
 	defer serv.Close()
@@ -346,7 +346,7 @@ func TestGetCurrentRole(t *testing.T) {
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, data.ED25519Key)
 
 	ccc := utils.NewCacheControlConfig(10, false)
-	ac := auth.NewTestingAccessController("quay")
+	ac := auth.NewConstantAccessController("quay")
 	handler := TrustMultiplexerHandler(ac, ctx, signed.NewEd25519(), ccc, ccc, nil)
 	serv := httptest.NewServer(handler)
 	defer serv.Close()
@@ -382,7 +382,7 @@ func TestRotateKeyEndpoint(t *testing.T) {
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, data.ED25519Key)
 
 	ccc := utils.NewCacheControlConfig(10, false)
-	ac := auth.NewTestingAccessController("testUser")
+	ac := auth.NewConstantAccessController("testUser")
 	handler := TrustMultiplexerHandler(ac, ctx, signed.NewEd25519(), ccc, ccc, nil)
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
@@ -413,7 +413,7 @@ func TestValidationErrorFormat(t *testing.T) {
 		context.Background(), notary.CtxKeyMetaStore, metaStore)
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, data.ED25519Key)
 
-	ac := auth.NewTestingAccessController("testUser")
+	ac := auth.NewConstantAccessController("testUser")
 	handler := TrustMultiplexerHandler(ac, ctx, signed.NewEd25519(), nil, nil, nil)
 	server := httptest.NewServer(handler)
 	defer server.Close()
@@ -446,7 +446,7 @@ func TestValidationErrorFormat(t *testing.T) {
 
 func TestSigningUserPushNonSignerPullSignerPull(t *testing.T) {
 	trust := servertest.TrustServiceMock(t)
-	ac := auth.NewTestingAccessController("signer")
+	ac := auth.NewConstantAccessController("signer")
 	gun := data.GUN("quay.io/signingUser/testRepo")
 	server, client := testServerAndClient(t, gun, trust, ac)
 	defer server.Close()
@@ -467,7 +467,7 @@ func TestSigningUserPushNonSignerPullSignerPull(t *testing.T) {
 
 func TestSigningUserPushSignerPullNonSignerPull(t *testing.T) {
 	trust := servertest.TrustServiceMock(t)
-	ac := auth.NewTestingAccessController("signer")
+	ac := auth.NewConstantAccessController("signer")
 	gun := data.GUN("quay.io/signingUser/testRepo")
 	server, client := testServerAndClient(t, gun, trust, ac)
 	defer server.Close()
@@ -490,7 +490,7 @@ func TestSigningUserPushSignerPullNonSignerPull(t *testing.T) {
 
 func TestSigningUserPushWithDelegations(t *testing.T) {
 	trust := servertest.TrustServiceMock(t)
-	ac := auth.NewTestingAccessController("signer")
+	ac := auth.NewConstantAccessController("signer")
 	gun := data.GUN("quay.io/signingUser/testRepo")
 	server, client := testServerAndClient(t, gun, trust, ac)
 	defer server.Close()

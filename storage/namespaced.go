@@ -21,14 +21,14 @@ func NewChannelMetastore(store notaryStorage.MetaStore, channel notaryStorage.Ch
 	}
 }
 
-func (st *ChannelMetastore) GetCurrent(gun data.GUN, tufRole data.RoleName, channels ...*notaryStorage.Channel) (created *time.Time, data []byte, err error) {
+func (st *ChannelMetastore) GetCurrent(gun data.GUN, tufRole data.RoleName, channels ...*notaryStorage.Channel) (*time.Time, []byte, error) {
 	return st.MetaStore.GetCurrent(gun, tufRole, &st.channel)
 }
 
-func (st *ChannelMetastore) GetChecksum(gun data.GUN, tufRole data.RoleName, checksum string, channels ...*notaryStorage.Channel) (created *time.Time, data []byte, err error) {
+func (st *ChannelMetastore) GetChecksum(gun data.GUN, tufRole data.RoleName, checksum string, channels ...*notaryStorage.Channel) (*time.Time, []byte, error) {
 	return st.MetaStore.GetChecksum(gun, tufRole, checksum, &st.channel)
 }
 
-func (st *ChannelMetastore) GetVersion(gun data.GUN, tufRole data.RoleName, version int, channels ...*notaryStorage.Channel) (created *time.Time, data []byte, err error) {
+func (st *ChannelMetastore) GetVersion(gun data.GUN, tufRole data.RoleName, version int, channels ...*notaryStorage.Channel) (*time.Time, []byte, error) {
 	return st.MetaStore.GetVersion(gun, tufRole, version, &st.channel)
 }

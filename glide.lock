@@ -1,5 +1,5 @@
-hash: 981efae2a89f7a2938a215c784f6100ba9e25cb3f2f3482231c7377dac7d1b96
-updated: 2017-05-03T11:17:28.471099217-04:00
+hash: ed750b819af9c8fff5867f8682d5cdf08fcc33ae2d3838f210799736780fd5cd
+updated: 2017-07-18T13:55:39.519207632-04:00
 imports:
 - name: github.com/agl/ed25519
   version: 278e1ec8e8a6e017cd07577924d6766039146ced
@@ -47,7 +47,7 @@ imports:
 - name: github.com/docker/libtrust
   version: fa567046d9b14f6aa788882a950d69651d230b21
 - name: github.com/docker/notary
-  version: fcb23a8788258f5afe451018321d85c0047ab8d5
+  version: e40704742d34c0c81d06f8a09567f0a77c5abbd2
   repo: git@github.com:ecordell/notary.git
   subpackages:
   - cryptoservice
@@ -73,6 +73,16 @@ imports:
   - tuf/utils
   - tuf/validation
   - utils
+- name: github.com/dvsekhvalnov/jose2go
+  version: 9f050a91b1f2663a30613ed12d728426599e1b2d
+  subpackages:
+  - aes
+  - arrays
+  - base64url
+  - compact
+  - kdf
+  - keys/ecc
+  - padding
 - name: github.com/go-sql-driver/mysql
   version: a0583e0143b1624142adab07e0e97fe106d99561
 - name: github.com/golang/protobuf

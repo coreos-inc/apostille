@@ -15,7 +15,7 @@ import:
   subpackages:
   - tlsconfig
 - package: github.com/docker/notary
-  version: fcb23a8788258f5afe451018321d85c0047ab8d5
+  version: e40704742d34c0c81d06f8a09567f0a77c5abbd2
   repo: git@github.com:ecordell/notary.git
   subpackages:
   - cryptoservice
