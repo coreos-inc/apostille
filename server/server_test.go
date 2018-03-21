@@ -29,6 +29,7 @@ import (
 	"github.com/docker/notary/utils"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
+	"time"
 )
 
 func TestRunBadAddr(t *testing.T) {
@@ -459,6 +460,43 @@ func TestSigningUserPushNonSignerPullSignerPull(t *testing.T) {
 
 	ac.TUFRoot = "quay"
 
+	servertest.RemoteNotEqual(t, client, data.CanonicalRootRole, meta[data.CanonicalRootRole])
+	servertest.RemoteNotEqual(t, client, data.CanonicalTargetsRole, meta[data.CanonicalTargetsRole])
+	servertest.RemoteNotEqual(t, client, data.CanonicalSnapshotRole, meta[data.CanonicalSnapshotRole])
+	servertest.RemoteEqual(t, client, "targets/releases", meta[data.CanonicalTargetsRole])
+}
+
+
+func TestSigningUserPushTwiceNonSignerPullSignerPull(t *testing.T) {
+	trust := servertest.TrustServiceMock(t)
+	ac := auth.NewConstantAccessController("signer")
+	gun := data.GUN("quay.io/signingUser/testRepo")
+	server, client := testServerAndClient(t, gun, trust, ac)
+	defer server.Close()
+	repo := servertest.CreateRepo(t, gun, trust)
+	meta := servertest.PushRepo(t, repo, client)
+
+	servertest.RemoteEqual(t, client, data.CanonicalRootRole, meta[data.CanonicalRootRole])
+	servertest.RemoteEqual(t, client, data.CanonicalTargetsRole, meta[data.CanonicalTargetsRole])
+	servertest.RemoteEqual(t, client, data.CanonicalSnapshotRole, meta[data.CanonicalSnapshotRole])
+
+	// push just snapshot
+	ss, err := repo.SignSnapshot(time.Now().AddDate(1,1,1))
+	require.NoError(t, err)
+	snapshot, err := json.Marshal(ss)
+	require.NoError(t,err)
+
+	stringMeta := make(map[string][]byte, 1)
+	stringMeta[data.CanonicalSnapshotRole.String()] = snapshot
+	err = client.SetMulti(stringMeta)
+	require.NoError(t, err)
+
+	servertest.RemoteEqual(t, client, data.CanonicalRootRole, meta[data.CanonicalRootRole])
+	servertest.RemoteEqual(t, client, data.CanonicalTargetsRole, meta[data.CanonicalTargetsRole])
+	servertest.RemoteEqual(t, client, data.CanonicalSnapshotRole, snapshot)
+
+	// switch to quay root
+	ac.TUFRoot = "quay"
 	servertest.RemoteNotEqual(t, client, data.CanonicalRootRole, meta[data.CanonicalRootRole])
 	servertest.RemoteNotEqual(t, client, data.CanonicalTargetsRole, meta[data.CanonicalTargetsRole])
 	servertest.RemoteNotEqual(t, client, data.CanonicalSnapshotRole, meta[data.CanonicalSnapshotRole])
