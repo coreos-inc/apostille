@@ -110,7 +110,6 @@ func GetMetadataHandler(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	// signing users must have push access
 	switch tufRootSigner {
 	case "signer":
-		logger.Info("request user is a signer for this repo")
 		store, ok := s.(*storage.MultiplexingStore)
 		if !ok {
 			logger.Error("500 GET: no storage exists")
@@ -118,7 +117,6 @@ func GetMetadataHandler(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		}
 		ctx = context.WithValue(ctx, notary.CtxKeyMetaStore, store.SignerChannelMetaStore)
 	case "quay":
-		logger.Info("request user is not signer for this repo, will be served shared root")
 		store, ok := s.(*storage.MultiplexingStore)
 		if !ok {
 			logger.Error("500 GET: no storage exists")
@@ -126,7 +124,6 @@ func GetMetadataHandler(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		}
 		ctx = context.WithValue(ctx, notary.CtxKeyMetaStore, store.AlternateChannelMetaStore)
 	case "admin":
-		logger.Info("request user is on the admin interface, will see shared root")
 		store, ok := s.(*storage.ChannelMetastore)
 		if !ok {
 			logger.Error("500 GET: no storage exists")
@@ -191,7 +188,7 @@ func TrustMultiplexerHandler(ac registryAuth.AccessController, ctx context.Conte
 		GetMetadataHandler,
 		notFoundError,
 		true,
-		consistent,
+		utils.NoCacheControl{},
 		[]string{"pull"},
 		authWrapper,
 		repoPrefixes,
@@ -201,7 +198,7 @@ func TrustMultiplexerHandler(ac registryAuth.AccessController, ctx context.Conte
 		GetMetadataHandler,
 		notFoundError,
 		true,
-		consistent,
+		utils.NoCacheControl{},
 		[]string{"pull"},
 		authWrapper,
 		repoPrefixes,
@@ -211,7 +208,7 @@ func TrustMultiplexerHandler(ac registryAuth.AccessController, ctx context.Conte
 		GetMetadataHandler,
 		notFoundError,
 		true,
-		current,
+		utils.NoCacheControl{},
 		[]string{"pull"},
 		authWrapper,
 		repoPrefixes,

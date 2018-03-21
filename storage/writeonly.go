@@ -14,7 +14,7 @@ type ErrWriteOnly struct{}
 
 // ErrWriteOnly is returned when a newer version of TUF metadata is already available
 func (err ErrWriteOnly) Error() string {
-	return fmt.Sprintf("Error updating metadata. MetaStore is read only.")
+	return fmt.Sprintf("Error updating metadata. MetaStore is write only.")
 }
 
 // ReadOnlyStore implements the MetaStore interface
