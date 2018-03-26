@@ -33,16 +33,12 @@ function cleanupAndExit {
     exit $exitCode
 }
 
+docker-compose -p "apostille_integration_${db}" -f ${composeFile} config
+docker-compose -p "apostille_integration_${db}" -f ${composeFile} build --pull | tee
+
 trap cleanupAndExit SIGINT SIGTERM EXIT
 
-cleanup
-
-docker-compose -p "apostille_integration_${db}" -f ${composeFile} build
-docker-compose -p "apostille_integration_${db}" -f ${composeFile} up server &
-docker-compose -p "apostille_integration_${db}" -f ${composeFile} run client &
-
-# Wait on client to finish running
-wait $!
+docker-compose -p "apostille_integration_${db}" -f ${composeFile} up --abort-on-container-exit
 
 # Capture exit code of client
 cleanupAndExit

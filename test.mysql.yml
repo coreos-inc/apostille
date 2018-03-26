@@ -35,7 +35,7 @@ services:
     build:
       context: .
       dockerfile: client.Dockerfile
-    command: python testclient.py
+    command: ["python", "testclient.py"]
     networks:
       - mdb
       - srv
@@ -51,9 +51,9 @@ services:
     entrypoint: /usr/bin/env sh
     environment:
       GOPATH: /go/src
-      MIGRATIONS_PATH: /go/src/github.com/docker/notary/migrations/signer/mysql
+      MIGRATIONS_PATH: /go/src/github.com/theupdateframework/notary/migrations/signer/mysql
       DB_URL: mysql://signer@tcp(mysql:3306)/notarysigner
-    command: -c "/migrate.sh && notary-signer -config=/go/src/github.com/docker/notary/fixtures/signer-config.json"
+    command: -c "/migrate.sh && notary-signer -config=/go/src/github.com/theupdateframework/notary/fixtures/signer-config.json"
     depends_on:
       - mysql
 networks:

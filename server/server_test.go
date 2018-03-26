@@ -231,7 +231,7 @@ func TestGetRoleByHash(t *testing.T) {
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, data.ED25519Key)
 
 	ccc := utils.NewCacheControlConfig(10, false)
-	ac := auth.NewConstantAccessController("quay")
+	ac := auth.NewConstantAccessController("signer")
 	handler := TrustMultiplexerHandler(ac, ctx, signed.NewEd25519(), ccc, ccc, nil)
 	serv := httptest.NewServer(handler)
 	defer serv.Close()
@@ -301,7 +301,7 @@ func TestGetRoleByVersion(t *testing.T) {
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, data.ED25519Key)
 
 	ccc := utils.NewCacheControlConfig(10, false)
-	ac := auth.NewConstantAccessController("quay")
+	ac := auth.NewConstantAccessController("signer")
 	handler := TrustMultiplexerHandler(ac, ctx, signed.NewEd25519(), ccc, ccc, nil)
 	serv := httptest.NewServer(handler)
 	defer serv.Close()
@@ -347,7 +347,7 @@ func TestGetCurrentRole(t *testing.T) {
 	ctx = context.WithValue(ctx, notary.CtxKeyKeyAlgo, data.ED25519Key)
 
 	ccc := utils.NewCacheControlConfig(10, false)
-	ac := auth.NewConstantAccessController("quay")
+	ac := auth.NewConstantAccessController("signer")
 	handler := TrustMultiplexerHandler(ac, ctx, signed.NewEd25519(), ccc, ccc, nil)
 	serv := httptest.NewServer(handler)
 	defer serv.Close()
@@ -370,7 +370,7 @@ func verifyGetResponse(t *testing.T, r *http.Response, expectedBytes []byte) {
 
 	require.NotEqual(t, "", r.Header.Get("Cache-Control"))
 	require.NotEqual(t, "", r.Header.Get("Last-Modified"))
-	require.Equal(t, "", r.Header.Get("Pragma"))
+	require.Equal(t, "no-cache", r.Header.Get("Pragma"))
 }
 
 // RotateKey supports only timestamp and snapshot key rotation

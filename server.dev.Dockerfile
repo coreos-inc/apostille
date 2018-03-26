@@ -1,9 +1,9 @@
-FROM golang:1.7.3-alpine
+FROM golang:1.9.4-alpine
 MAINTAINER Evan Cordell "cordell.evan@gmail.com"
 
 RUN apk add --update curl git gcc libc-dev ca-certificates && rm -rf /var/cache/apk/*
 
-RUN go get github.com/ecordell/migrate 
+RUN go get -tags 'mysql postgres file' github.com/mattes/migrate/cli && mv /go/bin/cli /go/bin/migrate
 
 ENV APOSTILLE_SRC github.com/coreos-inc/apostille
 
