@@ -116,6 +116,8 @@ func (st *MultiplexingStore) fetchAlternateRootRepo() (*tuf.Repo, error) {
 	return repo, nil
 }
 
+
+
 // UpdateMany updates multiple TUF records at once
 // This updates both the quay root and the signer root
 func (st *MultiplexingStore) UpdateMany(gun data.GUN, updates []notaryStorage.MetaUpdate) error {
@@ -155,7 +157,7 @@ func (st *MultiplexingStore) swizzleTargets(gun data.GUN, updates []notaryStorag
 
 	if !st.shouldSwizzle(signerRootedMetadataIdx) {
 		logrus.Debug("no target changes to swizzle")
-		return updates, nil
+		return nil, nil
 	}
 
 	if !st.swizzleAllowed(signerRootedMetadataIdx) {

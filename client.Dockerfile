@@ -1,4 +1,4 @@
-FROM golang:1.7.3
+FROM golang:1.9.4
 
 RUN apt-get update && apt-get install -y \
 	curl \
@@ -10,14 +10,15 @@ RUN apt-get update && apt-get install -y \
 	xz-utils \
 	python \
 	python-pip \
+	python-setuptools \
 	--no-install-recommends \
 	&& rm -rf /var/lib/apt/lists/*
 
-RUN useradd -ms /bin/bash notary
+RUN useradd -ms /bin/bash notary \
+	&& go get github.com/golang/lint/golint github.com/fzipp/gocyclo github.com/client9/misspell/cmd/misspell github.com/gordonklaus/ineffassign github.com/HewlettPackard/gas
+RUN go get github.com/theupdateframework/notary/cmd/notary
 
-RUN go get github.com/docker/notary/cmd/notary
-
-ENV NOTARYDIR /go/src/github.com/docker/notary
+ENV NOTARYDIR /go/src/github.com/theupdateframework/notary
 
 COPY integration/ ${NOTARYDIR}
 

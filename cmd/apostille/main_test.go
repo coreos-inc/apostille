@@ -51,7 +51,7 @@ func TestLint(t *testing.T) {
 		gostaticcheck.Check{}, // Verify function parameters
 	}
 	if err := custom.Check("../..."); err != nil {
-		t.Fatal("lint failures: %v", err)
+		t.Fatalf("lint failures: %v", err)
 	}
 }
 
@@ -498,9 +498,7 @@ func TestGetCacheConfig(t *testing.T) {
 
 	current, consistent, err := getCacheConfig(configure(defaults))
 	require.NoError(t, err)
-	require.Equal(t,
-		utils.PublicCacheControl{MaxAgeInSeconds: int(notary.CurrentMetadataCacheMaxAge.Seconds()),
-			MustReValidate: true}, current)
+	require.Equal(t, utils.NoCacheControl{}, current)
 	require.Equal(t,
 		utils.PublicCacheControl{MaxAgeInSeconds: int(notary.ConsistentMetadataCacheMaxAge.Seconds())}, consistent)
 

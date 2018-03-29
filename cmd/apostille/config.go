@@ -268,7 +268,7 @@ func getCacheConfig(configuration *viper.Viper) (current, consistent utils.Cache
 	currentOpt, consistentOpt := "current_metadata", "consistent_metadata"
 
 	defaults := map[string]int{
-		currentOpt:    int(notary.CurrentMetadataCacheMaxAge.Seconds()),
+		currentOpt:    0,
 		consistentOpt: int(notary.ConsistentMetadataCacheMaxAge.Seconds()),
 	}
 	maxMaxAge := int(notary.CacheMaxAgeLimit.Seconds())
