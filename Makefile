@@ -18,7 +18,7 @@ GOOSES = darwin linux
 APOSTILLE_BUILDTAGS ?= pkcs11
 APOSTILLEDIR := /go/src/github.com/docker/apostille
 
-GO_VERSION := $(shell go version | grep "1\.[7-9]\(\.[0-9]+\)*\|devel")
+GO_VERSION := $(shell go version | grep "1\.\([7-9]\|1[0-9]\)\(\.[0-9]+\)*\|devel")
 INTEGRATION_PATH=bin/integration.sh
 
 # check to make sure we have the right version. development versions of Go are
