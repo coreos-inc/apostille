@@ -9,12 +9,9 @@ export SEMVER=`git tag | sort -r | head -1 | sed 's/v//g'`+${GIT_SHA}
 cd helm/apostille-app
 yaml w -i Chart.yaml version "${SEMVER}"
 
-helm init --client-only
-helm registry push --namespace quay quay.io
+helm template . -f $1/tools/cloudconfig/secrets/helm-values/apostille-prod.yaml > templated.yaml
+kubectl apply -f templated.yaml
+rm templated.yaml
 
-helm upgrade  -f $1/tools/cloudconfig/secrets/helm-values/apostille-prod.yaml \
-			  --set apostille_image=quay.io/quay/apostille:${GIT_SHA},signer_image=quay.io/quay/apostille-signer:${GIT_SHA} \
-			  --install \
-			  apostille .
 
 cd ../..
