@@ -27,12 +27,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
-	"github.com/surullabs/lint"
-	"github.com/surullabs/lint/gofmt"
-	"github.com/surullabs/lint/golint"
-	"github.com/surullabs/lint/gosimple"
-	"github.com/surullabs/lint/gostaticcheck"
-	"github.com/surullabs/lint/govet"
 	"google.golang.org/grpc"
 )
 
@@ -41,19 +35,6 @@ const (
 	Key  = "../../vendor/github.com/docker/notary/fixtures/notary-server.key"
 	Root = "../../vendor/github.com/docker/notary/fixtures/root-ca.crt"
 )
-
-func TestLint(t *testing.T) {
-	custom := lint.Group{
-		gofmt.Check{},         // Enforce gofmt usage
-		govet.Check{},         // Use govet without -shadow
-		golint.Check{},        // Enforce Google Go style guide
-		gosimple.Check{},      // Simplification suggestions
-		gostaticcheck.Check{}, // Verify function parameters
-	}
-	if err := custom.Check("../..."); err != nil {
-		t.Fatalf("lint failures: %v", err)
-	}
-}
 
 // initializes a viper object with test configuration
 func configure(jsonConfig string) *viper.Viper {
@@ -515,9 +496,9 @@ func TestGetCacheConfig(t *testing.T) {
 
 func TestGetGUNPRefixes(t *testing.T) {
 	valids := map[string][]string{
-		`{}`: nil,
-		`{"repositories": {"gun_prefixes": []}}`:         nil,
-		`{"repositories": {}}`:                           nil,
+		`{}`:                                     nil,
+		`{"repositories": {"gun_prefixes": []}}`: nil,
+		`{"repositories": {}}`:                   nil,
 		`{"repositories": {"gun_prefixes": ["hello/"]}}`: {"hello/"},
 	}
 	invalids := []string{
