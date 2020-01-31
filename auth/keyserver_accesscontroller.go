@@ -29,7 +29,7 @@ type keyserverAccessController struct {
 	service           string
 	keyserver         string
 	updateKeyInterval time.Duration
-	keysLock          sync.RWMutex
+	keysLock          *sync.RWMutex
 	keys              map[string]*jose.JSONWebKey
 }
 
@@ -94,6 +94,7 @@ func NewKeyserverAccessController(options map[string]interface{}) (registryAuth.
 		issuer:            config.issuer,
 		service:           config.service,
 		keyserver:         config.keyserver,
+		keysLock:          &sync.RWMutex{},
 		updateKeyInterval: config.updateKeyInterval,
 	}
 	accessController.updateKeys()
