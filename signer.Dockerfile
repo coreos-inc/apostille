@@ -1,8 +1,10 @@
-FROM golang:1.9.4-alpine
+FROM golang:1.13
 
-RUN apk add --update curl git openssh-client gcc libc-dev && rm -rf /var/cache/apk/*
+RUN apt-get update \
+    && apt-get install -y openssh-client gcc libc-dev
 
-RUN go get -tags 'mysql postgres file' github.com/mattes/migrate/cli && mv /go/bin/cli /go/bin/migrate
+
+RUN go get -tags 'postgres' -u github.com/golang-migrate/migrate/cmd/migrate 
 RUN go get github.com/theupdateframework/notary/cmd/notary-signer
 
 
