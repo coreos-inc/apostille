@@ -1,31 +1,33 @@
 #!/bin/bash
 
 set -exv
-BASE_IMG="apostille"
-APOSTILLE_IMAGE="quay.io/app-sre/${BASE_IMG}"
+BASE_SERVER_IMG="apostille-server"
+BASE_SIGNER_IMG="apostille-signer"
+APOSTILLE_SERVER_IMAGE="quay.io/app-sre/${BASE_SERVER_IMG}"
+APOSTILLE_SIGNER_IMAGE="quay.io/app-sre/${BASE_SIGNER_IMG}"
 IMG="${BASE_IMG}:latest"
 GIT_HASH=`get rev-parse --short=7 HEAD`
 
 # build and push server
-docker build -t ${IMG}:server-${GIT_HASH} -f ./server.Dockerfile .
-docker tag ${IMG}:server-${GIT_HASH} ${IMG}:server-latest
+docker build -t ${APOSTILLE_SERVER_IMG}:${GIT_HASH} -f ./server.Dockerfile .
+docker tag ${APOSTILLE_SERVER_IMG}:${GIT_HASH} ${APOSTILLE_SERVER_IMG}:latest
+
+skopeo copy --dest-creds "${QUAY_USER}:${QUAY_TOKEN}" \
+    "docker-daemon:${APOSTILLE_SERVER_IMG}" \
+    "docker://${APOSTILLE_SERVER_IMG}:latest"
 
 skopeo copy --dest-creds "${QUAY_USER}:${QUAY_TOKEN}" \
     "docker-daemon:${IMG}" \
-    "docker://${IMG}:server-latest"
-
-skopeo copy --dest-creds "${QUAY_USER}:${QUAY_TOKEN}" \
-    "docker-daemon:${IMG}" \
-    "docker://${IMG}:server-${GIT_HASH}"
+    "docker://${APOSTILLE_SERVER_IMG}:${GIT_HASH}"
 
 # build and push signer
-docker build -t ${IMG}:signer-${GIT_HASH} -f ./signer.Dockerfile .
-docker tag ${IMG}:signer-${GIT_HASH} ${IMG}:signer-latest
+docker build -t ${APOSTILLE_SIGNER_IMAGE}:${GIT_HASH} -f ./signer.Dockerfile .
+docker tag ${APOSTILLE_SIGNER_IMAGE}:${GIT_HASH} ${APOSTILLE_SIGNER_IMAGE}:latest
 
 skopeo copy --dest-creds "${QUAY_USER}:${QUAY_TOKEN}" \
-    "docker-daemon:${IMG}" \
-    "docker://${IMG}:signer-latest"
+    "docker-daemon:${APOSTILLE_SIGNER_IMAGE}" \
+    "docker://${APOSTILLE_SIGNER_IMAGE}:latest"
 
 skopeo copy --dest-creds "${QUAY_USER}:${QUAY_TOKEN}" \
-    "docker-daemon:${IMG}" \
-    "docker://${IMG}:signer-${GIT_HASH}"
+    "docker-daemon:${APOSTILLE_SIGNER_IMAGE}" \
+    "docker://${APOSTILLE_SIGNER_IMAGE}:${GIT_HASH}"
