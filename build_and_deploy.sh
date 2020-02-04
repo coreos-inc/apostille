@@ -5,7 +5,6 @@ BASE_SERVER_IMG="apostille-server"
 BASE_SIGNER_IMG="apostille-signer"
 APOSTILLE_SERVER_IMAGE="quay.io/app-sre/${BASE_SERVER_IMG}"
 APOSTILLE_SIGNER_IMAGE="quay.io/app-sre/${BASE_SIGNER_IMG}"
-IMG="${BASE_IMG}:latest"
 GIT_HASH=`get rev-parse --short=7 HEAD`
 
 # build and push server
