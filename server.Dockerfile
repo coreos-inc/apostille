@@ -1,27 +1,16 @@
-FROM golang:1.9.4-alpine
+FROM golang:1.13
 
 ENV APOSTILLE_SRC github.com/coreos-inc/apostille
 ENV SERVICE_NAME=apostille
 
 COPY . /go/src/${APOSTILLE_SRC}
 
+RUN apt-get update \
+    && apt-get install -y gcc libc-dev musl-dev openssl ca-certificates make
+
 RUN set -ex \
-	&& apk add --no-cache --virtual .build-deps \
-		bash \
-		gcc \
-		libc-dev \
-		musl-dev \
-		openssl \
-		ca-certificates \
-		go \
-		git \
-		gcc \
-        libc-dev \
-        ca-certificates \
-        make \
-        curl \
-	\
-	&& go get -tags 'mysql postgres file' github.com/mattes/migrate/cli && mv /go/bin/cli /go/bin/migrate \
+	# && go get -tags 'mysql postgres file' github.com/mattes/migrate/cli && mv /go/bin/cli /go/bin/migrate \
+    && go get -tags 'postgres' -u github.com/golang-migrate/migrate/cmd/migrate \
 	&& mv /go/src/${APOSTILLE_SRC}/migrations /migrations \
 	&& mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH" \
 	&& cd /go/src/${APOSTILLE_SRC} \
@@ -31,7 +20,6 @@ RUN set -ex \
 	&& make build \
 	\
 	&& update-ca-certificates \
-	&& apk del .build-deps \
 	&& mv /go/bin/apostille /usr/local/bin/ \
 	&& cd / \
 	&& rm -rf /go \
