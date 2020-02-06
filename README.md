@@ -39,3 +39,5 @@ make test-all
 
 
 If you get a 409 conflict when running one of the deploy scripts, comment out the `helm registry push` and retry.
+
+# Test
