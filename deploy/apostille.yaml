@@ -1,0 +1,167 @@
+---
+apiVersion: v1
+kind: Template
+metadata:
+  name: apostille
+objects:
+# Service
+- kind: Service
+  apiVersion: v1
+  metadata:
+    name: ${{ NAME }}
+    labels:
+      app: ${{ NAME }}
+    annotations:
+      prometheus.io/scrape: 'true'
+  spec:
+    ports:
+      - name: default
+        protocol: TCP
+        port: ${{ CLUSTERIP_SERVICE_PORT  }}
+        targetPort: ${{ CLUSTERIP_SERVICE_TARGET_PORT }}
+    selector:
+      app: ${{ NAME }}
+    type: ClusterIP
+# Deployment
+- kind: Deployment
+  apiVersion: extensions/v1beta1
+  metadata:
+    name: ${{ NAME }}
+    labels:
+      app: ${{ NAME }}
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: ${{ NAME }}
+    template:
+      metadata:
+        labels:
+          app: ${{ NAME }}
+      spec:
+        volumes:
+          - name: apostille-config
+            secret:
+              secretName: apostille-server-secret
+              items:
+                - key: config_prod_json
+                  path: config.json
+          - name: apostille-signer-config
+            secret:
+              name: apostille-signer-config
+              items:
+                - key: signer_config_json
+                  path: config.json
+              defaultMode: 420
+          - name: apostille-server-secret
+            secret:
+              secretName: apostille-server-secret
+              items:
+                - key: tls_ca
+                  path: ca.crt
+                - key: tls_client_cert
+                  path: client.crt
+                - key: tls_client_key
+                  path: client.key
+                - key:
+          - name: apostille-signer-secret
+            secret:
+              secretName: apostille-signer-secret
+              items:
+                - key: client_ca_file
+                  path: ca.crt
+                - key: tls_cert_file
+                  path: cert.crt
+                - key: tls_key_file
+                  path: cert.key
+        containers:
+          - resources: {}
+            name: apostille-server
+            command:
+              - apostille
+            args:
+              - -config=/etc/config/config.json
+            env:
+              - name: DB_URL
+                valueFrom:
+                  secretKeyRef:
+                    name: apostille-server-secret
+                    key: db_url
+              - name: ROOT_DB_URL
+                valueFrom:
+                  secretKeyRef:
+                    name: apostille-server-secret
+                    key: db_root_url
+            ports:
+              - name: web
+                containerPort: ${{ SERVER_WEB_PORT }}
+                protocol: TCP
+            imagePullPolicy: IfNotPresent
+            volumeMounts:
+              - name: apostille-config
+                mountPath: /etc/config
+              - name: apostille-server-secret
+                mountPath: /etc/secret
+            image: ""
+          - resources: {}
+            name: apostille-signer
+            command:
+              - notary-signer
+            args:
+              - -config=/etc/config/config.json
+            env:
+              - name: NOTARY_SIGNER_TIMESTAMP_1
+                valueFrom:
+                  secretKeyRef:
+                    name: apostille-signer-secret
+                    key: notary_signer_timestamp_1_password
+              - name: GOPATH
+                value: /go/src
+              - name: DB_URL
+                valueFrom:
+                  secretKeyRef:
+                    name: apostille-signer-secret
+                    key: db_url
+            ports:
+              - name: grpc
+                containerPort: ${{ SIGNER_GRPC_PORT }}
+                protocol: TCP
+            imagePullPolicy: Always
+            volumeMounts:
+              - name: apostille-signer-config
+                mountPath: /etc/config
+              - name: apostille-signer-secret
+                mountPath: /etc/secret
+            image: ""
+        restartPolicy: Always
+        terminationGracePeriodSeconds: 30
+        dnsPolicy: ClusterFirst
+        securityContext: {}
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxUnavailable: 0
+        maxSurge: 4
+    minReadySeconds: 60
+​
+parameters:
+- name: NAME
+  value: "apostille"
+  displayName: name
+  description: Defaults for Apostille.
+- name: CLUSTERIP_SERVICE_PORT
+  value: 4443
+  displayName: clusterip service port
+  description: Defaults for Apostille.
+- name: CLUSTERIP_SERVICE_TARGET_PORT
+  value: 4443
+  displayName: clusterip target service port
+  description: Defaults for Apostille.
+- name: SERVER_WEB_PORT
+  value: 4443
+  displayName: apostille web port
+  description: apostille server container web port.
+- name: SIGNER_GRPC_PORT
+  value: 7899
+  displayName: apostille web port
+  description: apostille server container web port.
