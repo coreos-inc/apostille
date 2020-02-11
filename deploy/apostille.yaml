@@ -63,7 +63,6 @@ objects:
                   path: client.crt
                 - key: tls_client_key
                   path: client.key
-                - key:
           - name: apostille-signer-secret
             secret:
               secretName: ${{ APOSTILLE_SIGNER_CONFIG }}
