@@ -154,7 +154,6 @@ objects:
         maxUnavailable: ${{ MAX_UNAVAILABLE }}
         maxSurge: ${{ MAX_SURGE }}
     minReadySeconds: ${{ MIN_READY_SECONDS }}
-​
 parameters:
 - name: NAME
   value: "apostille"
