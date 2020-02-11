@@ -107,7 +107,7 @@ objects:
                 mountPath: /etc/config
               - name: apostille-server-secret
                 mountPath: /etc/secret
-            image: ${{ SERVER_IMAGE }}
+            image: ${SERVER_IMAGE}:${SERVER_TAG}
           - resources:
               limits:
                 cpu: ${{ SIGNER_CPU_LIMIT }}
@@ -143,7 +143,7 @@ objects:
                 mountPath: /etc/config
               - name: apostille-signer-secret
                 mountPath: /etc/secret
-            image: ${{ SIGNER_IMAGE  }}
+            image: ${SIGNER_IMAGE}:${SIGNER_TAG}
         restartPolicy: Always
         terminationGracePeriodSeconds: 30
         dnsPolicy: ClusterFirst
@@ -160,87 +160,94 @@ parameters:
   displayName: name
   description: Defaults for Apostille.
 - name: CLUSTERIP_SERVICE_PORT
-  value: 4443
+  value: "4443"
   displayName: clusterip service port
   description: Defaults for Apostille.
 - name: CLUSTERIP_SERVICE_TARGET_PORT
-  value: 4443
+  value: "4443"
   displayName: clusterip target service port
   description: Defaults for Apostille.
 - name: SERVER_WEB_PORT
-  value: 4443
+  value: "4443"
   displayName: apostille web port
   description: apostille server container web port.
 - name: SIGNER_GRPC_PORT
-  value: 7899
+  value: "7899"
   displayName: apostille web port
   description: apostille server container web port.
 - name: REPLICA_COUNT
-  value: 1
+  value: "1"
   displayName: pod replicas
   description: the number of apostille pods
 - name: APOSTILLE_SERVER_SECRET
-  value: apostille-server-secret
+  value: "apostille-server-secret"
   displayName: apostille server secret
   description: apostille server secret
 - name: APOSTILLE_SIGNER_CONFIG
-  value: apostille-signer-config
+  value: "apostille-signer-config"
   displayName: apostille-signer-config
   description: apostille-signer-config
 - name: STRATEGY
-  value: RollingUpdate
+  value: "RollingUpdate"
   displayName: kubernetes deployment strategy
   description: kubernetes deployment strategy
 - name: MAX_UNAVAILABLE
-  value: 0
+  value: "0"
   displayName: maximum number of unavailable pods 
   description: maximum number of unavailable pods
 - name: MAX_SURGE 
-  value: 4
+  value: "4"
   displayName: maximum number of surged pods
   description: maximum number of surged pods
 - name: MIN_READY_SECONDS
-  value: 60
+  value: "60"
   displayName: minimum number of seconds for ready 
   description: minimum number of seconds for ready
 - name: SERVER_CPU_LIMIT
-  value: 1
+  value: "1"
   displayName: apostille server cpu limit
   description: apostille server cpu limit
 - name: SERVER_CPU_REQUEST
-  value: 1
+  value: "1"
   displayName: apostille server cpu request
   description: apostille server cpu request
 - name: SERVER_MEMORY_LIMIT
-  value: 4096Mi
+  value: "4096Mi"
   displayName: apostille memory cpu limit
   description: apostille memory cpu limit
 - name: SERVER_MEMORY_REQUEST
-  value: 4096Mi
+  value: "4096Mi"
   displayName: apostille memory cpu request
   description: apostille memory cpu request
 - name: SIGNER_CPU_LIMIT
-  value: 1
+  value: "1"
   displayName: apostille signer cpu limit
   description: apostille signer cpu limit
 - name: SIGNER_CPU_REQUEST
-  value: 1
+  value: "1"
   displayName: apostille signer cpu request
   description: apostille signer cpu request
 - name: SIGNER_MEMORY_LIMIT
-  value: 4096Mi
+  value: "4096Mi"
   displayName: apostille signer memory limit
   description: apostille signer memory limit
 - name: SIGNER_MEMORY_REQUEST
-  value: 4096Mi
+  value: "4096Mi"
   displayName: apostille signer memory request
   description: apostille signer memory request
 - name: SERVER_IMAGE
   value: ""
   display: apostille server container image
   description: apostille server container image
+- name: SERVER_TAG
+  value: "latest"
+  display: apostille server container image
+  description: apostille server container image
 - name: SIGNER_IMAGE
   value: ""
   display: apostille signer container image
   description: apostille signer container image
-
+- name: SIGNER_TAG
+  value: "latest"
+  display: apostille signer container image
+  description: apostille signer container image
