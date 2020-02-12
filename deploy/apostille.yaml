@@ -15,10 +15,10 @@ objects:
       prometheus.io/scrape: 'true'
   spec:
     ports:
-      - name: default
-        protocol: TCP
-        port: ${{CLUSTERIP_SERVICE_PORT}}
-        targetPort: ${{CLUSTERIP_SERVICE_TARGET_PORT}}
+    - name: default
+      protocol: TCP
+      port: ${{CLUSTERIP_SERVICE_PORT}}
+      targetPort: ${{CLUSTERIP_SERVICE_TARGET_PORT}}
     selector:
       app: ${{NAME}}
     type: ClusterIP
@@ -42,114 +42,114 @@ objects:
           updateDeployment: secret_changed
       spec:
         volumes:
-          - name: apostille-config
-            secret:
-              secretName: ${{APOSTILLE_SERVER_SECRET}}
-              items:
-                - key: config_prod_json
-                  path: config.json
-          - name: apostille-signer-config
-            secret:
-              secretName: ${{APOSTILLE_SIGNER_CONFIG}}
-              items:
-                - key: signer_config_json
-                  path: config.json
-              defaultMode: 420
-          - name: apostille-server-secret
-            secret:
-              secretName: ${{APOSTILLE_SERVER_SECRET}}
-              items:
-                - key: tls_ca
-                  path: ca.crt
-                - key: tls_client_cert
-                  path: client.crt
-                - key: tls_client_key
-                  path: client.key
-          - name: apostille-signer-secret
-            secret:
-              secretName: ${{APOSTILLE_SIGNER_CONFIG}}
-              items:
-                - key: client_ca_file
-                  path: ca.crt
-                - key: tls_cert_file
-                  path: cert.crt
-                - key: tls_key_file
-                  path: cert.key
+        - name: apostille-config
+          secret:
+            secretName: ${{APOSTILLE_SERVER_SECRET}}
+            items:
+              - key: config_prod_json
+                path: config.json
+        - name: apostille-signer-config
+          secret:
+            secretName: ${{APOSTILLE_SIGNER_SECRET}}
+            items:
+              - key: signer_config_json
+                path: config.json
+            defaultMode: 420
+        - name: apostille-server-secret
+          secret:
+            secretName: ${{APOSTILLE_SERVER_SECRET}}
+            items:
+              - key: tls_ca
+                path: ca.crt
+              - key: tls_client_cert
+                path: client.crt
+              - key: tls_client_key
+                path: client.key
+        - name: apostille-signer-secret
+          secret:
+            secretName: ${{APOSTILLE_SIGNER_SECRET}}
+            items:
+              - key: client_ca
+                path: ca.crt
+              - key: tls_cert
+                path: cert.crt
+              - key: tls_key
+                path: cert.key
         containers:
-          - resources:
-              limits:
-                cpu: ${{SERVER_CPU_LIMIT}}
-                memory: ${{SERVER_MEMORY_LIMIT}}
-              requests:
-                cpu: ${{SERVER_CPU_REQUEST}}
-                memory: ${{SERVER_MEMORY_REQUEST}}
-            name: apostille-server
-            command:
-              - apostille
-            args:
-              - -config=/etc/config/config.json
-            env:
-              - name: DB_URL
-                valueFrom:
-                  secretKeyRef:
-                    name: ${{APOSTILLE_SERVER_SECRET}}
-                    key: db_url
-              - name: ROOT_DB_URL
-                valueFrom:
-                  secretKeyRef:
-                    name: ${{APOSTILLE_SERVER_SECRET}}
-                    key: db_root_url
-            ports:
-              - name: web
-                containerPort: ${{SERVER_WEB_PORT}}
-                protocol: TCP
-            imagePullPolicy: IfNotPresent
-            volumeMounts:
-              - name: apostille-config
-                mountPath: /etc/config
-              - name: apostille-server-secret
-                mountPath: /etc/secret
-            image: ${SERVER_IMAGE}:${IMAGE_TAG}
-          - resources:
-              limits:
-                cpu: ${{SIGNER_CPU_LIMIT}}
-                memory: ${{SIGNER_MEMORY_LIMIT}}
-              requests:
-                cpu: ${{SIGNER_CPU_REQUEST}}
-                memory: ${{SIGNER_MEMORY_REQUEST}}
-            name: apostille-signer
-            command:
-              - notary-signer
-            args:
-              - -config=/etc/config/config.json
-            env:
-              - name: NOTARY_SIGNER_TIMESTAMP_1
-                valueFrom:
-                  secretKeyRef:
-                    name: ${{APOSTILLE_SIGNER_CONFIG}}
-                    key: notary_signer_timestamp_1_password
-              - name: GOPATH
-                value: /go/src
-              - name: DB_URL
-                valueFrom:
-                  secretKeyRef:
-                    name: ${{APOSTILLE_SIGNER_CONFIG}}
-                    key: db_url
-            ports:
-              - name: grpc
-                containerPort: ${{SIGNER_GRPC_PORT}}
-                protocol: TCP
-            imagePullPolicy: Always
-            volumeMounts:
-              - name: apostille-signer-config
-                mountPath: /etc/config
-              - name: apostille-signer-secret
-                mountPath: /etc/secret
-            image: ${SIGNER_IMAGE}:${IMAGE_TAG}
-        restartPolicy: Always
-        terminationGracePeriodSeconds: 30
-        dnsPolicy: ClusterFirst
-        securityContext: {}
+        - resources:
+            limits:
+              cpu: ${{SERVER_CPU_LIMIT}}
+              memory: ${{SERVER_MEMORY_LIMIT}}
+            requests:
+              cpu: ${{SERVER_CPU_REQUEST}}
+              memory: ${{SERVER_MEMORY_REQUEST}}
+          name: apostille-server
+          command:
+          - apostille
+          args:
+          - -config=/etc/config/config.json
+          env:
+          - name: DB_URL
+            valueFrom:
+              secretKeyRef:
+                name: ${{APOSTILLE_SERVER_SECRET}}
+                key: db_url
+          - name: ROOT_DB_URL
+            valueFrom:
+              secretKeyRef:
+                name: ${{APOSTILLE_SERVER_SECRET}}
+                key: db_root_url
+          ports:
+          - name: web
+            containerPort: ${{SERVER_WEB_PORT}}
+            protocol: TCP
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+          - name: apostille-config
+            mountPath: /etc/config
+          - name: apostille-server-secret
+            mountPath: /etc/secret
+          image: ${SERVER_IMAGE}:${IMAGE_TAG}
+        - resources:
+            limits:
+              cpu: ${{SIGNER_CPU_LIMIT}}
+              memory: ${{SIGNER_MEMORY_LIMIT}}
+            requests:
+              cpu: ${{SIGNER_CPU_REQUEST}}
+              memory: ${{SIGNER_MEMORY_REQUEST}}
+          name: apostille-signer
+          command:
+          - notary-signer
+          args:
+          - -config=/etc/config/config.json
+          env:
+          - name: NOTARY_SIGNER_TIMESTAMP_1
+            valueFrom:
+              secretKeyRef:
+                name: ${{APOSTILLE_SIGNER_SECRET}}
+                key: notary_signer_timestamp_1_password
+          - name: GOPATH
+            value: /go/src
+          - name: DB_URL
+            valueFrom:
+              secretKeyRef:
+                name: ${{APOSTILLE_SIGNER_SECRET}}
+                key: db_url
+          ports:
+          - name: grpc
+            containerPort: ${{SIGNER_GRPC_PORT}}
+            protocol: TCP
+          imagePullPolicy: Always
+          volumeMounts:
+          - name: apostille-signer-config
+            mountPath: /etc/config
+          - name: apostille-signer-secret
+            mountPath: /etc/secret
+          image: ${SIGNER_IMAGE}:${IMAGE_TAG}
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      securityContext: {}
     strategy:
       type: ${{STRATEGY}}
       rollingUpdate:
@@ -185,25 +185,25 @@ parameters:
   value: "apostille-server-secret"
   displayName: apostille server secret
   description: apostille server secret
-- name: APOSTILLE_SIGNER_CONFIG
-  value: "apostille-signer-config"
-  displayName: apostille-signer-config
-  description: apostille-signer-config
+- name: APOSTILLE_SIGNER_SECRET
+  value: "apostille-signer-secret"
+  displayName: apostille-signer-secret
+  description: apostille-signer-secret
 - name: STRATEGY
   value: "RollingUpdate"
   displayName: kubernetes deployment strategy
   description: kubernetes deployment strategy
 - name: MAX_UNAVAILABLE
   value: "0"
-  displayName: maximum number of unavailable pods 
+  displayName: maximum number of unavailable pods
   description: maximum number of unavailable pods
-- name: MAX_SURGE 
+- name: MAX_SURGE
   value: "4"
   displayName: maximum number of surged pods
   description: maximum number of surged pods
 - name: MIN_READY_SECONDS
   value: "60"
-  displayName: minimum number of seconds for ready 
+  displayName: minimum number of seconds for ready
   description: minimum number of seconds for ready
 - name: SERVER_CPU_LIMIT
   value: "1"
