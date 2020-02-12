@@ -30,6 +30,14 @@ objects:
     labels:
       app: ${{NAME}}
   spec:
+    restartPolicy: Always
+    terminationGracePeriodSeconds: 30
+    strategy:
+      type: ${{STRATEGY}}
+      rollingUpdate:
+        maxUnavailable: ${{MAX_UNAVAILABLE}}
+        maxSurge: ${{MAX_SURGE}}
+    minReadySeconds: ${{MIN_READY_SECONDS}}
     replicas: ${{REPLICA_COUNT}}
     selector:
       matchLabels:
@@ -146,16 +154,6 @@ objects:
           - name: apostille-signer-secret
             mountPath: /etc/secret
           image: ${SIGNER_IMAGE}:${IMAGE_TAG}
-      restartPolicy: Always
-      terminationGracePeriodSeconds: 30
-      dnsPolicy: ClusterFirst
-      securityContext: {}
-    strategy:
-      type: ${{STRATEGY}}
-      rollingUpdate:
-        maxUnavailable: ${{MAX_UNAVAILABLE}}
-        maxSurge: ${{MAX_SURGE}}
-    minReadySeconds: ${{MIN_READY_SECONDS}}
 parameters:
 - name: NAME
   value: "apostille"
