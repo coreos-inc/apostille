@@ -15,10 +15,14 @@ objects:
       prometheus.io/scrape: 'true'
   spec:
     ports:
-    - name: default
+    - name: apostille-server-port
       protocol: TCP
       port: ${{CLUSTERIP_SERVICE_PORT}}
       targetPort: ${{CLUSTERIP_SERVICE_TARGET_PORT}}
+    - name: apostille-admin-server-port
+      protocol: TCP
+      port: ${{CLUSTERIP_SERVICE_ADMIN_PORT}}
+      targetPort: ${{CLUSTERIP_SERVICE_ADMIN_TARGET_PORT}}
     selector:
       app: ${{NAME}}
     type: ClusterIP
@@ -109,6 +113,9 @@ objects:
           - name: web
             containerPort: ${{SERVER_WEB_PORT}}
             protocol: TCP
+          - name: admin
+            containerPort: ${{SERVER_ADMIN_PORT}}
+            protocol: TCP
           imagePullPolicy: IfNotPresent
           volumeMounts:
           - name: apostille-config
@@ -165,8 +172,20 @@ parameters:
   value: "4443"
   displayName: clusterip target service port
   description: Defaults for Apostille.
+- name: CLUSTERIP_SERVICE_ADMIN_PORT
+  value: "4443"
+  displayName: clusterip service port
+  description: Defaults for Apostille.
+- name: CLUSTERIP_SERVICE_ADMIN_TARGET_PORT
+  value: "4443"
+  displayName: clusterip target service port
+  description: Defaults for Apostille.
 - name: SERVER_WEB_PORT
   value: "4443"
+  displayName: apostille web port
+  description: apostille server container web port.
+- name: SERVER_ADMIN_PORT
+  value: "4442"
   displayName: apostille web port
   description: apostille server container web port.
 - name: SIGNER_GRPC_PORT
